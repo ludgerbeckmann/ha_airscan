@@ -21,6 +21,7 @@ DEFAULT_WIDTH = 2480
 DEFAULT_HEIGHT = 3508
 
 PAGE_TIMEOUT = 180
+MAX_BATCH_BYTES = 512 * 1024 * 1024
 BUSY_RETRY_DELAY = 1.0
 
 
@@ -220,6 +221,10 @@ class EsclClient:
                 async with page_resp:
                     if page_resp.status == 200:
                         pages.append(await page_resp.read())
+                        if sum(map(len, pages)) > MAX_BATCH_BYTES:
+                            raise EsclError(
+                                "Scan zu groß (Limit 512 MiB) – kleinere Auflösung oder weniger Seiten"
+                            )
                         deadline = loop.time() + timeout
                         if on_page:
                             on_page(len(pages))

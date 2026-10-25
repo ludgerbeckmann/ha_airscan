@@ -9,6 +9,9 @@ Scannt über das Netzwerk (eSCL/AirScan, z. B. Epson-Multifunktionsgeräte) und 
 - Timeouts: Einzug 900 s, Flachbett 180 s; die Seitenzahl wird live aktualisiert
 - Immer nur ein Scan gleichzeitig; der eSCL-Job wird danach sauber gelöscht
 - **Stapelmodus am Flachbett:** „Seite hinzufügen“ sammelt Seiten im Speicher, „Senden“ baut ein PDF, „Verwerfen“ leert den Speicher. Wird der Stapel länger als X Minuten (Standard 30) nicht angefasst, feuert das Event `ha_airscan_batch_stale` oder – per Option – der Stapel wird automatisch gesendet.
+- Ziel „Datei“ (z. B. Paperless-Consume-Ordner): Schreiben über eine versteckte Temp-Datei mit anschließendem Umbenennen, damit Ordnerüberwachung nie halbe PDFs sieht; vorher Prüfung auf mindestens 256 MiB freien Speicher
+- Grenzen: ein Scan oder Stapel darf höchstens 512 MiB groß sein; der Farbmodus wird gegen die Fähigkeiten der gewählten Quelle geprüft
+- Diagnose-Download in HA (Geräte & Dienste → Integration → ⋮) ohne Token, URL, Host und Scanner-UUID
 - Dateiname `scan-YYYYMMDD-HHMMSS.pdf`
 
 ## Entitäten
