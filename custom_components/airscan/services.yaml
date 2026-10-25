@@ -1,0 +1,49 @@
+scan:
+  fields:
+    config_entry:
+      selector:
+        config_entry:
+          integration: airscan
+    source:
+      default: platen
+      selector:
+        select:
+          translation_key: source
+          options: [platen, adf]
+    duplex:
+      default: false
+      selector:
+        boolean:
+    resolution:
+      selector:
+        number:
+          min: 75
+          max: 1200
+          step: 75
+          unit_of_measurement: dpi
+    color_mode:
+      selector:
+        select:
+          translation_key: color_mode
+          options: [color, grayscale]
+    destination:
+      default: paperless
+      selector:
+        select:
+          translation_key: destination
+          options: [paperless, file]
+    title:
+      selector:
+        text:
+    tags:
+      selector:
+        text:
+    correspondent:
+      selector:
+        text:
+    document_type:
+      selector:
+        text:
+    directory:
+      selector:
+        text:

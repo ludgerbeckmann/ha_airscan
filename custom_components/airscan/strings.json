@@ -1,0 +1,161 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Scanner",
+        "data": {
+          "host": "Host / IP",
+          "port": "Port",
+          "tls": "HTTPS (_uscans)",
+          "name": "Name (optional)"
+        }
+      },
+      "confirm": {
+        "title": "Scanner",
+        "description": "Set up scanner {name}?"
+      },
+      "paperless": {
+        "title": "Paperless-ngx",
+        "description": "Optional: leave empty to skip Paperless. Tags, correspondent and document type are numeric Paperless IDs (tags comma-separated).",
+        "data": {
+          "paperless_url": "Paperless URL (e.g. http://paperless:8000)",
+          "paperless_token": "API-Token",
+          "tags": "Tag IDs",
+          "correspondent": "Correspondent ID",
+          "document_type": "Document type ID",
+          "resolution": "Resolution (dpi)",
+          "color_mode": "Color mode"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid token",
+      "paperless_incomplete": "URL and token must both be set"
+    },
+    "abort": {
+      "already_configured": "Scanner is already configured",
+      "cannot_connect": "Failed to connect"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Paperless-ngx",
+        "description": "Optional: leave empty to skip Paperless. Tags, correspondent and document type are numeric Paperless IDs (tags comma-separated).",
+        "data": {
+          "paperless_url": "Paperless URL (e.g. http://paperless:8000)",
+          "paperless_token": "API-Token",
+          "tags": "Tag IDs",
+          "correspondent": "Correspondent ID",
+          "document_type": "Document type ID",
+          "resolution": "Resolution (dpi)",
+          "color_mode": "Color mode"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid token",
+      "paperless_incomplete": "URL and token must both be set"
+    }
+  },
+  "entity": {
+    "button": {
+      "scan_platen": {
+        "name": "Scan flatbed"
+      },
+      "scan_adf_simplex": {
+        "name": "Scan feeder (single-sided)"
+      },
+      "scan_adf_duplex": {
+        "name": "Scan feeder (double-sided)"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "idle": "Idle",
+          "processing": "Scanning",
+          "testing": "Testing",
+          "stopped": "Stopped",
+          "down": "Down"
+        }
+      }
+    }
+  },
+  "selector": {
+    "source": {
+      "options": {
+        "platen": "Flatbed",
+        "adf": "Document feeder (ADF)"
+      }
+    },
+    "color_mode": {
+      "options": {
+        "color": "Color",
+        "grayscale": "Grayscale"
+      }
+    },
+    "destination": {
+      "options": {
+        "paperless": "Paperless-ngx",
+        "file": "File"
+      }
+    }
+  },
+  "services": {
+    "scan": {
+      "name": "Scan",
+      "description": "Starts a scan and stores the PDF in Paperless or as a file.",
+      "fields": {
+        "config_entry": {
+          "name": "Scanner",
+          "description": "Select when you have several scanners."
+        },
+        "source": {
+          "name": "Source",
+          "description": "Flatbed or document feeder."
+        },
+        "duplex": {
+          "name": "Duplex",
+          "description": "Scan both sides (feeder only)."
+        },
+        "resolution": {
+          "name": "Resolution (dpi)",
+          "description": "dpi"
+        },
+        "color_mode": {
+          "name": "Color mode",
+          "description": ""
+        },
+        "destination": {
+          "name": "Destination",
+          "description": ""
+        },
+        "title": {
+          "name": "Title",
+          "description": ""
+        },
+        "tags": {
+          "name": "Tag IDs",
+          "description": "Comma-separated tag IDs; overrides the defaults."
+        },
+        "correspondent": {
+          "name": "Correspondent ID",
+          "description": ""
+        },
+        "document_type": {
+          "name": "Document type ID",
+          "description": ""
+        },
+        "directory": {
+          "name": "Directory",
+          "description": "Only for destination “file”; must be in allowlist_external_dirs."
+        }
+      }
+    }
+  }
+}
