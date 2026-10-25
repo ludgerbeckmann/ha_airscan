@@ -145,3 +145,34 @@ def test_platen_single_page_and_no_pages_error():
             else:
                 raise AssertionError("expected EsclNoPagesError")
     _run(go())
+
+
+def test_atomic_write(tmp_path):
+    files = _load("files")
+    target = tmp_path / "in" / "scan.pdf"
+    files.write_atomic(target, b"%PDF", min_free=0)
+    assert target.read_bytes() == b"%PDF"
+    assert [p.name for p in target.parent.iterdir()] == ["scan.pdf"]  # no temp left behind
+    try:
+        files.write_atomic(target, b"x", min_free=10**18)
+    except files.FileOutputError:
+        pass
+    else:
+        raise AssertionError("expected FileOutputError")
+    assert target.read_bytes() == b"%PDF"  # existing file untouched
+
+
+def test_size_limit(monkeypatch):
+    async def go():
+        monkeypatch.setattr(escl, "MAX_BATCH_BYTES", 10)
+        app, _ = _fake_printer(pages_in_adf=3)
+        async with TestServer(app) as srv, aiohttp.ClientSession() as sess:
+            client = escl.EsclClient(sess, srv.host, srv.port, False)
+            xml = escl.build_scan_settings(source="adf", duplex=False, resolution=300, color_mode="color", width=1, height=1)
+            try:
+                await client.scan(xml, single_page=False, timeout=5)
+            except escl.EsclError as err:
+                assert "zu groß" in str(err)
+            else:
+                raise AssertionError("expected size error")
+    _run(go())

@@ -26,7 +26,15 @@ from .const import (
     EVENT_BATCH_STALE,
     EVENT_SCAN_FINISHED,
 )
-from .escl import EsclError, EsclNoPagesError, SourceCaps, build_scan_settings
+from .escl import (
+    COLOR_MODE_MAP,
+    MAX_BATCH_BYTES,
+    EsclError,
+    EsclNoPagesError,
+    SourceCaps,
+    build_scan_settings,
+)
+from .files import FileOutputError, write_atomic
 from .paperless import PaperlessError
 from .pdf import jpegs_to_pdf
 
@@ -182,12 +190,10 @@ async def _deliver(
             raise HomeAssistantError(f"Upload zu Paperless fehlgeschlagen: {err}") from err
     else:
         target = Path(directory) / filename
-
-        def _write() -> None:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(pdf)
-
-        await hass.async_add_executor_job(_write)
+        try:
+            await hass.async_add_executor_job(write_atomic, target, pdf)
+        except FileOutputError as err:
+            raise HomeAssistantError(str(err)) from err
         result["path"] = str(target)
     return result
 
@@ -204,7 +210,13 @@ def _check_destination(hass: HomeAssistant, data: AirscanData, destination: str,
 
 def _resolve(entry: AirscanConfigEntry, resolution: int | None, color_mode: str | None, src: SourceCaps) -> tuple[int, str]:
     dpi = _nearest(int(resolution or entry.options.get(CONF_RESOLUTION, DEFAULT_RESOLUTION)), src.resolutions)
-    return dpi, color_mode or entry.options.get(CONF_COLOR_MODE, DEFAULT_COLOR_MODE)
+    color = color_mode or entry.options.get(CONF_COLOR_MODE, DEFAULT_COLOR_MODE)
+    if src.color_modes and COLOR_MODE_MAP[color] not in src.color_modes:
+        raise ServiceValidationError(
+            f"Farbmodus '{color}' wird von dieser Quelle nicht unterstützt "
+            f"(verfügbar: {', '.join(src.color_modes)})"
+        )
+    return dpi, color
 
 
 def _finish(hass: HomeAssistant, entry: AirscanConfigEntry, result: dict) -> None:
@@ -324,6 +336,10 @@ async def async_batch_add(
             error = _fail(data, err)
             _arm_stale_timer(hass, entry)
             raise error from err
+        if sum(map(len, data.tracker.batch)) + sum(map(len, pages)) > MAX_BATCH_BYTES:
+            error = _fail(data, HomeAssistantError("Stapel zu groß (Limit 512 MiB) – bitte senden"))
+            _arm_stale_timer(hass, entry)
+            raise error
         data.tracker.batch.extend(pages)
         data.tracker.batch_dpi = dpi
         _batch_idle(data)
