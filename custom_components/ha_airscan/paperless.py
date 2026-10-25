@@ -22,7 +22,7 @@ class PaperlessClient:
         self._url = url.rstrip("/")
         self._headers = {
             "Authorization": f"Token {token}",
-            "Accept": "application/json; version=5",
+            "Accept": "application/json",
         }
 
     async def check(self) -> None:
@@ -36,9 +36,11 @@ class PaperlessClient:
                 if resp.status in (401, 403):
                     raise PaperlessAuthError("Invalid token")
                 if resp.status != 200:
-                    raise PaperlessError(f"Paperless returned HTTP {resp.status}")
+                    raise PaperlessError(
+                        f"HTTP {resp.status} von {self._url}/api/documents/ – URL/Port prüfen"
+                    )
         except (aiohttp.ClientError, TimeoutError) as err:
-            raise PaperlessError(f"Cannot reach Paperless: {err}") from err
+            raise PaperlessError(f"{type(err).__name__}: {err}") from err
 
     async def upload(
         self,
@@ -76,4 +78,4 @@ class PaperlessClient:
                     )
                 return (await resp.text()).strip().strip('"')
         except (aiohttp.ClientError, TimeoutError) as err:
-            raise PaperlessError(f"Cannot reach Paperless: {err}") from err
+            raise PaperlessError(f"{type(err).__name__}: {err}") from err

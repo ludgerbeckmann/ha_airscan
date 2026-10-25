@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import voluptuous as vol
@@ -21,6 +22,7 @@ from .const import (
     CONF_DOCUMENT_TYPE,
     CONF_PAPERLESS_TOKEN,
     CONF_PAPERLESS_URL,
+    CONF_PAPERLESS_VERIFY_SSL,
     CONF_RESOLUTION,
     CONF_ROOT,
     CONF_TAGS,
@@ -35,12 +37,17 @@ from .const import (
 from .escl import EsclClient, EsclError
 from .paperless import PaperlessAuthError, PaperlessClient, PaperlessError
 
+_LOGGER = logging.getLogger(__name__)
+
 
 def _options_schema(d: dict[str, Any]) -> vol.Schema:
     return vol.Schema(
         {
             vol.Optional(CONF_PAPERLESS_URL, default=d.get(CONF_PAPERLESS_URL, "")): str,
             vol.Optional(CONF_PAPERLESS_TOKEN, default=d.get(CONF_PAPERLESS_TOKEN, "")): str,
+            vol.Optional(
+                CONF_PAPERLESS_VERIFY_SSL, default=d.get(CONF_PAPERLESS_VERIFY_SSL, True)
+            ): bool,
             vol.Optional(CONF_TAGS, default=d.get(CONF_TAGS, "")): str,
             vol.Optional(CONF_CORRESPONDENT, default=d.get(CONF_CORRESPONDENT, "")): str,
             vol.Optional(CONF_DOCUMENT_TYPE, default=d.get(CONF_DOCUMENT_TYPE, "")): str,
@@ -60,21 +67,27 @@ def _options_schema(d: dict[str, Any]) -> vol.Schema:
     )
 
 
-async def _validate_paperless(hass: HomeAssistant, user_input: dict[str, Any]) -> str | None:
-    """Return an error key or None."""
+async def _validate_paperless(
+    hass: HomeAssistant, user_input: dict[str, Any]
+) -> tuple[str | None, str]:
+    """Return (error key or None, human readable detail)."""
     url = user_input.get(CONF_PAPERLESS_URL, "").strip()
     token = user_input.get(CONF_PAPERLESS_TOKEN, "").strip()
     if not url and not token:
-        return None
+        return None, ""
     if not url or not token:
-        return "paperless_incomplete"
+        return "paperless_incomplete", ""
+    session = async_get_clientsession(
+        hass, verify_ssl=user_input.get(CONF_PAPERLESS_VERIFY_SSL, True)
+    )
     try:
-        await PaperlessClient(async_get_clientsession(hass), url, token).check()
-    except PaperlessAuthError:
-        return "invalid_auth"
-    except PaperlessError:
-        return "cannot_connect"
-    return None
+        await PaperlessClient(session, url, token).check()
+    except PaperlessAuthError as err:
+        return "invalid_auth", str(err)
+    except PaperlessError as err:
+        _LOGGER.warning("Paperless check against %s failed: %s", url, err)
+        return "cannot_connect", str(err)
+    return None, ""
 
 
 class AirscanConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -170,7 +183,8 @@ class AirscanConfigFlow(ConfigFlow, domain=DOMAIN):
         """Paperless and scan defaults."""
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not (error := await _validate_paperless(self.hass, user_input)):
+            error, detail = await _validate_paperless(self.hass, user_input)
+            if not error:
                 return self.async_create_entry(
                     title=self._title, data=self._data, options=user_input
                 )
@@ -179,6 +193,7 @@ class AirscanConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="paperless",
             data_schema=_options_schema(user_input or {}),
             errors=errors,
+            description_placeholders={"error_detail": detail if errors else ""},
         )
 
 
@@ -189,11 +204,13 @@ class AirscanOptionsFlow(OptionsFlow):
         """Options."""
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not (error := await _validate_paperless(self.hass, user_input)):
+            error, detail = await _validate_paperless(self.hass, user_input)
+            if not error:
                 return self.async_create_entry(data=user_input)
             errors["base"] = error
         return self.async_show_form(
             step_id="init",
             data_schema=_options_schema(user_input or dict(self.config_entry.options)),
             errors=errors,
+            description_placeholders={"error_detail": detail if errors else ""},
         )

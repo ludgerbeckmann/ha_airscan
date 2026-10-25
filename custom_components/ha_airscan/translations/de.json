@@ -17,7 +17,7 @@
       },
       "paperless": {
         "title": "Paperless-ngx",
-        "description": "Optional: leer lassen, um Paperless zu überspringen. Tags, Korrespondent und Dokumenttyp als numerische Paperless-IDs (Tags kommagetrennt).",
+        "description": "Optional: leer lassen, um Paperless zu überspringen. Tags, Korrespondent und Dokumenttyp als numerische Paperless-IDs (Tags kommagetrennt).\n\n{error_detail}",
         "data": {
           "paperless_url": "Paperless-URL (z. B. http://paperless:8000)",
           "paperless_token": "API-Token",
@@ -27,7 +27,8 @@
           "resolution": "Auflösung (dpi)",
           "color_mode": "Farbmodus",
           "batch_timeout": "Stapel vergessen nach (Minuten, 0 = aus)",
-          "batch_auto_send": "Vergessenen Stapel automatisch senden"
+          "batch_auto_send": "Vergessenen Stapel automatisch senden",
+          "paperless_verify_ssl": "SSL-Zertifikat prüfen"
         }
       }
     },
@@ -45,7 +46,7 @@
     "step": {
       "init": {
         "title": "Paperless-ngx",
-        "description": "Optional: leer lassen, um Paperless zu überspringen. Tags, Korrespondent und Dokumenttyp als numerische Paperless-IDs (Tags kommagetrennt).",
+        "description": "Optional: leer lassen, um Paperless zu überspringen. Tags, Korrespondent und Dokumenttyp als numerische Paperless-IDs (Tags kommagetrennt).\n\n{error_detail}",
         "data": {
           "paperless_url": "Paperless-URL (z. B. http://paperless:8000)",
           "paperless_token": "API-Token",
@@ -55,7 +56,8 @@
           "resolution": "Auflösung (dpi)",
           "color_mode": "Farbmodus",
           "batch_timeout": "Stapel vergessen nach (Minuten, 0 = aus)",
-          "batch_auto_send": "Vergessenen Stapel automatisch senden"
+          "batch_auto_send": "Vergessenen Stapel automatisch senden",
+          "paperless_verify_ssl": "SSL-Zertifikat prüfen"
         }
       }
     },

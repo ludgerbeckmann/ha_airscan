@@ -17,7 +17,7 @@
       },
       "paperless": {
         "title": "Paperless-ngx",
-        "description": "Optional: leave empty to skip Paperless. Tags, correspondent and document type are numeric Paperless IDs (tags comma-separated).",
+        "description": "Optional: leave empty to skip Paperless. Tags, correspondent and document type are numeric Paperless IDs (tags comma-separated).\n\n{error_detail}",
         "data": {
           "paperless_url": "Paperless URL (e.g. http://paperless:8000)",
           "paperless_token": "API-Token",
@@ -27,7 +27,8 @@
           "resolution": "Resolution (dpi)",
           "color_mode": "Color mode",
           "batch_timeout": "Forgotten batch after (minutes, 0 = off)",
-          "batch_auto_send": "Send forgotten batch automatically"
+          "batch_auto_send": "Send forgotten batch automatically",
+          "paperless_verify_ssl": "Verify SSL certificate"
         }
       }
     },
@@ -45,7 +46,7 @@
     "step": {
       "init": {
         "title": "Paperless-ngx",
-        "description": "Optional: leave empty to skip Paperless. Tags, correspondent and document type are numeric Paperless IDs (tags comma-separated).",
+        "description": "Optional: leave empty to skip Paperless. Tags, correspondent and document type are numeric Paperless IDs (tags comma-separated).\n\n{error_detail}",
         "data": {
           "paperless_url": "Paperless URL (e.g. http://paperless:8000)",
           "paperless_token": "API-Token",
@@ -55,7 +56,8 @@
           "resolution": "Resolution (dpi)",
           "color_mode": "Color mode",
           "batch_timeout": "Forgotten batch after (minutes, 0 = off)",
-          "batch_auto_send": "Send forgotten batch automatically"
+          "batch_auto_send": "Send forgotten batch automatically",
+          "paperless_verify_ssl": "Verify SSL certificate"
         }
       }
     },
