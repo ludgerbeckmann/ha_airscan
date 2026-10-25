@@ -1,0 +1,16 @@
+{
+  "domain": "ha_airscan",
+  "name": "AirScan (eSCL) Scanner",
+  "codeowners": ["@ludgerbeckmann"],
+  "config_flow": true,
+  "documentation": "https://github.com/ludgerbeckmann/ha_airscan",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/ludgerbeckmann/ha_airscan/issues",
+  "requirements": [],
+  "version": "0.1.0",
+  "zeroconf": [
+    {"type": "_uscan._tcp.local."},
+    {"type": "_uscans._tcp.local."}
+  ]
+}
