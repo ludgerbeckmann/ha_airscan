@@ -8,7 +8,7 @@ import types
 
 from PIL import Image
 
-base = Path(__file__).parent.parent / "custom_components" / "airscan"
+base = Path(__file__).parent.parent / "custom_components" / "ha_airscan"
 pkg = types.ModuleType("airscan_pkg")
 pkg.__path__ = [str(base)]
 sys.modules["airscan_pkg"] = pkg

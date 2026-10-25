@@ -1,5 +1,5 @@
 {
-  "domain": "airscan",
+  "domain": "ha_airscan",
   "name": "AirScan (eSCL) Scanner",
   "codeowners": ["@ludgerbeckmann"],
   "config_flow": true,

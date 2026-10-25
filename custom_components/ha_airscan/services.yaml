@@ -3,7 +3,7 @@ scan:
     config_entry:
       selector:
         config_entry:
-          integration: airscan
+          integration: ha_airscan
     source:
       default: platen
       selector:
@@ -53,7 +53,7 @@ batch_add:
     config_entry:
       selector:
         config_entry:
-          integration: airscan
+          integration: ha_airscan
     resolution:
       selector:
         number:
@@ -72,7 +72,7 @@ batch_send:
     config_entry:
       selector:
         config_entry:
-          integration: airscan
+          integration: ha_airscan
     destination:
       default: paperless
       selector:
@@ -100,4 +100,4 @@ batch_discard:
     config_entry:
       selector:
         config_entry:
-          integration: airscan
+          integration: ha_airscan

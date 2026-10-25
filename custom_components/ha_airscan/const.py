@@ -1,6 +1,6 @@
 """Constants for the AirScan integration."""
 
-DOMAIN = "airscan"
+DOMAIN = "ha_airscan"
 
 CONF_TLS = "tls"
 CONF_ROOT = "root"
@@ -25,8 +25,8 @@ SOURCES = ["platen", "adf"]
 DESTINATIONS = ["paperless", "file"]
 
 SERVICE_SCAN = "scan"
-EVENT_SCAN_FINISHED = "airscan_scan_finished"
+EVENT_SCAN_FINISHED = "ha_airscan_scan_finished"
 SERVICE_BATCH_ADD = "batch_add"
 SERVICE_BATCH_SEND = "batch_send"
 SERVICE_BATCH_DISCARD = "batch_discard"
-EVENT_BATCH_STALE = "airscan_batch_stale"
+EVENT_BATCH_STALE = "ha_airscan_batch_stale"

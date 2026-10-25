@@ -8,7 +8,7 @@ Scannt über das Netzwerk (eSCL/AirScan, z. B. Epson-Multifunktionsgeräte) und 
 - **Aufwärmlogik für den Einzug:** Meldet der Drucker nach dem Standby fälschlich `ScannerAdfEmpty`, wird bis zu 2× ein winziger Flachbett-Scan (100 dpi, 10×10 mm) gemacht, um den Sensor zu aktualisieren. Liefert ein Scan 0 Seiten, gibt es bis zu 3 Versuche mit Pause.
 - Timeouts: Einzug 900 s, Flachbett 180 s; die Seitenzahl wird live aktualisiert
 - Immer nur ein Scan gleichzeitig; der eSCL-Job wird danach sauber gelöscht
-- **Stapelmodus am Flachbett:** „Seite hinzufügen“ sammelt Seiten im Speicher, „Senden“ baut ein PDF, „Verwerfen“ leert den Speicher. Wird der Stapel länger als X Minuten (Standard 30) nicht angefasst, feuert das Event `airscan_batch_stale` oder – per Option – der Stapel wird automatisch gesendet.
+- **Stapelmodus am Flachbett:** „Seite hinzufügen“ sammelt Seiten im Speicher, „Senden“ baut ein PDF, „Verwerfen“ leert den Speicher. Wird der Stapel länger als X Minuten (Standard 30) nicht angefasst, feuert das Event `ha_airscan_batch_stale` oder – per Option – der Stapel wird automatisch gesendet.
 - Dateiname `scan-YYYYMMDD-HHMMSS.pdf`
 
 ## Entitäten
@@ -20,7 +20,7 @@ Scannt über das Netzwerk (eSCL/AirScan, z. B. Epson-Multifunktionsgeräte) und 
 | Sensor *Seiten* | Seiten des laufenden/letzten Jobs bzw. des offenen Stapels |
 | Sensor *Einzug* | `loaded` / `empty` laut Drucker (kann nach Standby veraltet sein) |
 
-Services: `airscan.scan`, `airscan.batch_add`, `airscan.batch_send`, `airscan.batch_discard`. Events: `airscan_scan_finished`, `airscan_batch_stale`.
+Services: `ha_airscan.scan`, `ha_airscan.batch_add`, `ha_airscan.batch_send`, `ha_airscan.batch_discard`. Events: `ha_airscan_scan_finished`, `ha_airscan_batch_stale`.
 
 Fehler-Benachrichtigung per Automation auf den Statussensor:
 
@@ -37,7 +37,11 @@ actions:
 
 ## Installation
 
-Per HACS als benutzerdefiniertes Repository oder `custom_components/airscan` nach `config/custom_components/` kopieren, HA neu starten, Integration „AirScan“ hinzufügen.
+**HACS (empfohlen):** HACS → ⋮ → *Benutzerdefinierte Repositories* → `https://github.com/ludgerbeckmann/ha_airscan`, Kategorie *Integration* → herunterladen → Home Assistant neu starten → *Einstellungen → Geräte & Dienste → Integration hinzufügen → „AirScan (eSCL) Scanner“*.
+
+**Manuell:** `custom_components/ha_airscan` nach `config/custom_components/` kopieren und neu starten.
+
+Die Domain lautet `ha_airscan`. Updates erscheinen in HACS, sobald im Repo ein GitHub-Release (z. B. `v0.1.0`, passend zur `version` in der `manifest.json`) veröffentlicht ist.
 
 ## Paperless
 
@@ -46,7 +50,7 @@ In Paperless unter *Profil → API-Token* ein Token erzeugen. In den Integration
 ## Service-Beispiel
 
 ```yaml
-action: airscan.scan
+action: ha_airscan.scan
 data:
   source: adf
   duplex: true
