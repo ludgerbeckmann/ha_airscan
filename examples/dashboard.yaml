@@ -1,0 +1,112 @@
+# Beispiel: Scan-Kachel für ein Dashboard (Standard-Karten, kein Zusatzcode nötig).
+#
+# Die Entity-IDs hängen vom Gerätenamen ab. "epson_et_3950_series" unten durch den
+# eigenen Namen ersetzen (Einstellungen → Geräte & Dienste → AirScan → Entitäten).
+type: vertical-stack
+cards:
+  # Status mit Detailtext ("Seite 3 gescannt", Fehlermeldung, ...)
+  - type: tile
+    entity: sensor.epson_et_3950_series_status
+    name: Scanner
+    icon: mdi:scanner
+    state_content:
+      - state
+      - detail
+
+  # Fehler gut sichtbar
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: sensor.epson_et_3950_series_status
+        state: error
+    card:
+      type: markdown
+      content: >
+        ⚠️ **Scan fehlgeschlagen:**
+        {{ state_attr('sensor.epson_et_3950_series_status', 'detail') }}
+
+  # Scan-Aktionen
+  - type: grid
+    columns: 3
+    square: false
+    cards:
+      - type: tile
+        entity: button.epson_et_3950_series_scan_flachbett
+        name: Glas
+        icon: mdi:file-document-outline
+        vertical: true
+        tap_action:
+          action: perform-action
+          perform-action: button.press
+          target:
+            entity_id: button.epson_et_3950_series_scan_flachbett
+      - type: tile
+        entity: button.epson_et_3950_series_scan_einzug_einseitig
+        name: Einzug
+        icon: mdi:file-document-multiple-outline
+        vertical: true
+        tap_action:
+          action: perform-action
+          perform-action: button.press
+          target:
+            entity_id: button.epson_et_3950_series_scan_einzug_einseitig
+      - type: tile
+        entity: button.epson_et_3950_series_scan_einzug_beidseitig
+        name: Beidseitig
+        icon: mdi:file-swap-outline
+        vertical: true
+        tap_action:
+          action: perform-action
+          perform-action: button.press
+          target:
+            entity_id: button.epson_et_3950_series_scan_einzug_beidseitig
+
+  # Stapelmodus am Glas: mehrere Seiten sammeln, dann als ein PDF senden
+  - type: grid
+    columns: 3
+    square: false
+    cards:
+      - type: tile
+        entity: button.epson_et_3950_series_stapel_seite_hinzufugen
+        name: Seite +
+        icon: mdi:plus-box-multiple-outline
+        vertical: true
+        tap_action:
+          action: perform-action
+          perform-action: button.press
+          target:
+            entity_id: button.epson_et_3950_series_stapel_seite_hinzufugen
+      - type: tile
+        entity: button.epson_et_3950_series_stapel_senden
+        name: Senden
+        icon: mdi:send-outline
+        vertical: true
+        tap_action:
+          action: perform-action
+          perform-action: button.press
+          target:
+            entity_id: button.epson_et_3950_series_stapel_senden
+      - type: tile
+        entity: button.epson_et_3950_series_stapel_verwerfen
+        name: Verwerfen
+        icon: mdi:delete-outline
+        vertical: true
+        tap_action:
+          action: perform-action
+          perform-action: button.press
+          target:
+            entity_id: button.epson_et_3950_series_stapel_verwerfen
+
+  # Zusatzinfos
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: tile
+        entity: sensor.epson_et_3950_series_seiten
+        name: Seiten
+        icon: mdi:numeric
+      - type: tile
+        entity: sensor.epson_et_3950_series_einzug
+        name: Einzug
+        icon: mdi:tray-full

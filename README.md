@@ -46,6 +46,10 @@ actions:
 
 Die Domain lautet `ha_airscan`. Releases entstehen automatisch: Ein Merge nach `main` mit neuer `version` in der `manifest.json` erzeugt Tag `vX.Y.Z` und GitHub-Release (`.github/workflows/release.yml`), HACS zeigt dann das Update.
 
+## Dashboard
+
+Eine fertige Kachel mit Status, Scan-Buttons, Stapelmodus und Einzugsanzeige liegt in [`examples/dashboard.yaml`](examples/dashboard.yaml). Dashboard bearbeiten → Karte hinzufügen → *Manuell* → Inhalt einfügen und `epson_et_3950_series` durch den eigenen Gerätenamen ersetzen. Es werden nur Standard-Karten verwendet.
+
 ## Paperless
 
 In Paperless unter *Profil → API-Token* ein Token erzeugen. In den Integrationsoptionen URL, Token und optional Standard-Tags/Korrespondent/Dokumenttyp (numerische IDs) eintragen.
