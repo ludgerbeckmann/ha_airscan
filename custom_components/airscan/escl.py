@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
 import xml.etree.ElementTree as ET
@@ -25,6 +26,10 @@ BUSY_RETRY_DELAY = 1.0
 
 class EsclError(Exception):
     """Scanner reported an error or could not be reached."""
+
+
+class EsclNoPagesError(EsclError):
+    """Job ended without any page (ADF empty or stale sensor); worth retrying."""
 
 
 @dataclass
@@ -169,8 +174,20 @@ class EsclClient:
                 raise EsclError(f"ScannerStatus returned HTTP {resp.status}")
             return parse_status(await resp.read())
 
-    async def scan(self, settings_xml: str, *, single_page: bool) -> list[bytes]:
-        """Run a scan job and return all pages as JPEG data."""
+    async def scan(
+        self,
+        settings_xml: str,
+        *,
+        single_page: bool,
+        timeout: int = PAGE_TIMEOUT,
+        on_page: Callable[[int], None] | None = None,
+    ) -> list[bytes]:
+        """Run a scan job and return all pages as JPEG data.
+
+        `timeout` bounds each wait for the next page. `on_page` is called with
+        the running page count.
+        """
+        loop = asyncio.get_running_loop()
         try:
             resp = await self._session.post(
                 f"{self._base}/ScanJobs",
@@ -182,7 +199,7 @@ class EsclClient:
             raise EsclError(f"Cannot reach scanner: {err}") from err
         async with resp:
             if resp.status == 409:
-                raise EsclError("Scanner refused the job (ADF empty or cover open?)")
+                raise EsclNoPagesError("Scanner refused the job (ADF empty or cover open?)")
             if resp.status == 503:
                 raise EsclError("Scanner is busy")
             if resp.status != 201 or not (location := resp.headers.get("Location")):
@@ -192,35 +209,37 @@ class EsclClient:
 
         pages: list[bytes] = []
         try:
-            deadline = asyncio.get_running_loop().time() + PAGE_TIMEOUT
+            deadline = loop.time() + timeout
             while True:
                 try:
                     page_resp = await self._session.get(
-                        f"{job_url}/NextDocument",
-                        timeout=ClientTimeout(total=PAGE_TIMEOUT),
+                        f"{job_url}/NextDocument", timeout=ClientTimeout(total=timeout)
                     )
                 except (aiohttp.ClientError, TimeoutError) as err:
                     raise EsclError(f"Scan interrupted: {err}") from err
                 async with page_resp:
                     if page_resp.status == 200:
                         pages.append(await page_resp.read())
-                        deadline = asyncio.get_running_loop().time() + PAGE_TIMEOUT
+                        deadline = loop.time() + timeout
+                        if on_page:
+                            on_page(len(pages))
                         if single_page:
                             break
-                    elif page_resp.status == 404:
-                        break
+                    elif page_resp.status in (404, 409, 410):
+                        break  # no more pages / feeder ran out
                     elif page_resp.status == 503:
-                        if asyncio.get_running_loop().time() > deadline:
+                        if loop.time() > deadline:
                             raise EsclError("Timeout waiting for the scanner")
                         await asyncio.sleep(BUSY_RETRY_DELAY)
                     else:
                         raise EsclError(f"NextDocument returned HTTP {page_resp.status}")
         finally:
+            # 404 here (job already completed) is harmless.
             try:
                 await self._session.delete(job_url, timeout=ClientTimeout(total=10))
             except (aiohttp.ClientError, TimeoutError):
                 pass
 
         if not pages:
-            raise EsclError("Scanner returned no pages (ADF empty?)")
+            raise EsclNoPagesError("Scanner returned no pages (ADF empty?)")
         return pages

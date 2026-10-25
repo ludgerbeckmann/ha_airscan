@@ -67,3 +67,81 @@ def test_pdf():
     assert data.startswith(b"%PDF") and data.rstrip().endswith(b"%%EOF")
     assert data.count(b"/Type /Page ") == 2 and b"DeviceGray" in data
     assert _jpeg("RGB") in data  # embedded losslessly
+
+
+# --- fake eSCL scanner ------------------------------------------------------
+
+import asyncio
+
+import aiohttp
+from aiohttp import web
+from aiohttp.test_utils import TestServer
+
+
+def _fake_printer(pages_in_adf=3, stale_adf=False):
+    """Mimics the ET-3950 quirks: duplex flag, 404 after last page, stale ADF state."""
+    st = {"adf": pages_in_adf, "stale": stale_adf, "jobs": {}, "deleted": [], "settings": []}
+
+    async def post_job(req):
+        body = (await req.read()).decode()
+        st["settings"].append(body)
+        if "Feeder" in body:
+            if st["stale"]:
+                return web.Response(status=201, headers={"Location": "/eSCL/ScanJobs/empty"})
+            st["jobs"]["1"] = st["adf"]
+            return web.Response(status=201, headers={"Location": "http://wrong-host/eSCL/ScanJobs/1"})
+        st["stale"] = False  # a flatbed scan refreshes the sensor
+        st["jobs"]["f"] = 1
+        return web.Response(status=201, headers={"Location": "/eSCL/ScanJobs/f"})
+
+    async def next_doc(req):
+        job = req.match_info["job"]
+        if st["jobs"].get(job, 0) > 0:
+            st["jobs"][job] -= 1
+            return web.Response(body=_jpeg("RGB"), content_type="image/jpeg")
+        return web.Response(status=404)
+
+    async def delete(req):
+        st["deleted"].append(req.match_info["job"])
+        return web.Response(status=200)
+
+    app = web.Application()
+    app.router.add_post("/eSCL/ScanJobs", post_job)
+    app.router.add_get("/eSCL/ScanJobs/{job}/NextDocument", next_doc)
+    app.router.add_delete("/eSCL/ScanJobs/{job}", delete)
+    return app, st
+
+
+def _run(coro):
+    return asyncio.run(coro)
+
+
+def test_adf_duplex_collects_all_pages():
+    async def go():
+        app, st = _fake_printer(pages_in_adf=4)
+        async with TestServer(app) as srv, aiohttp.ClientSession() as sess:
+            client = escl.EsclClient(sess, srv.host, srv.port, False)
+            seen = []
+            xml = escl.build_scan_settings(source="adf", duplex=True, resolution=300, color_mode="color", width=2480, height=3508)
+            pages = await client.scan(xml, single_page=False, timeout=5, on_page=seen.append)
+            assert len(pages) == 4 and seen == [1, 2, 3, 4]
+            assert "<scan:Duplex>true" in st["settings"][0]
+            assert st["deleted"] == ["1"]  # absolute Location with wrong host handled
+    _run(go())
+
+
+def test_platen_single_page_and_no_pages_error():
+    async def go():
+        app, st = _fake_printer(pages_in_adf=0)
+        async with TestServer(app) as srv, aiohttp.ClientSession() as sess:
+            client = escl.EsclClient(sess, srv.host, srv.port, False)
+            plat = escl.build_scan_settings(source="platen", duplex=False, resolution=300, color_mode="color", width=100, height=100)
+            assert len(await client.scan(plat, single_page=True, timeout=5)) == 1
+            adf = escl.build_scan_settings(source="adf", duplex=False, resolution=300, color_mode="color", width=100, height=100)
+            try:
+                await client.scan(adf, single_page=False, timeout=5)
+            except escl.EsclNoPagesError:
+                pass
+            else:
+                raise AssertionError("expected EsclNoPagesError")
+    _run(go())

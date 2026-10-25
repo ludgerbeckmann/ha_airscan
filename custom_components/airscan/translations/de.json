@@ -25,7 +25,9 @@
           "correspondent": "Korrespondent-ID",
           "document_type": "Dokumenttyp-ID",
           "resolution": "Auflösung (dpi)",
-          "color_mode": "Farbmodus"
+          "color_mode": "Farbmodus",
+          "batch_timeout": "Stapel vergessen nach (Minuten, 0 = aus)",
+          "batch_auto_send": "Vergessenen Stapel automatisch senden"
         }
       }
     },
@@ -51,7 +53,9 @@
           "correspondent": "Korrespondent-ID",
           "document_type": "Dokumenttyp-ID",
           "resolution": "Auflösung (dpi)",
-          "color_mode": "Farbmodus"
+          "color_mode": "Farbmodus",
+          "batch_timeout": "Stapel vergessen nach (Minuten, 0 = aus)",
+          "batch_auto_send": "Vergessenen Stapel automatisch senden"
         }
       }
     },
@@ -71,6 +75,15 @@
       },
       "scan_adf_duplex": {
         "name": "Scan Einzug (beidseitig)"
+      },
+      "batch_add": {
+        "name": "Stapel: Seite hinzufügen"
+      },
+      "batch_send": {
+        "name": "Stapel: Senden"
+      },
+      "batch_discard": {
+        "name": "Stapel: Verwerfen"
       }
     },
     "sensor": {
@@ -78,10 +91,20 @@
         "name": "Status",
         "state": {
           "idle": "Bereit",
-          "processing": "Scannt",
-          "testing": "Testing",
-          "stopped": "Gestoppt",
-          "down": "Down"
+          "batch": "Stapel offen",
+          "running": "Läuft",
+          "done": "Fertig",
+          "error": "Fehler"
+        }
+      },
+      "pages": {
+        "name": "Seiten"
+      },
+      "feeder": {
+        "name": "Einzug",
+        "state": {
+          "loaded": "Geladen",
+          "empty": "Leer"
         }
       }
     }
@@ -154,6 +177,68 @@
         "directory": {
           "name": "Verzeichnis",
           "description": "Nur für Ziel „Datei“; muss in allowlist_external_dirs stehen."
+        }
+      }
+    },
+    "batch_add": {
+      "name": "Stapel: Seite hinzufügen",
+      "description": "Scannt eine Flachbett-Seite in den Zwischenspeicher.",
+      "fields": {
+        "config_entry": {
+          "name": "Scanner",
+          "description": "Bei mehreren Scannern auswählen."
+        },
+        "resolution": {
+          "name": "Auflösung (dpi)",
+          "description": "dpi"
+        },
+        "color_mode": {
+          "name": "Farbmodus",
+          "description": ""
+        }
+      }
+    },
+    "batch_send": {
+      "name": "Stapel: Senden",
+      "description": "Baut aus dem Stapel ein PDF und speichert es.",
+      "fields": {
+        "config_entry": {
+          "name": "Scanner",
+          "description": "Bei mehreren Scannern auswählen."
+        },
+        "destination": {
+          "name": "Ziel",
+          "description": ""
+        },
+        "title": {
+          "name": "Titel",
+          "description": ""
+        },
+        "tags": {
+          "name": "Tag-IDs",
+          "description": "Kommagetrennte Tag-IDs; überschreibt die Standardwerte."
+        },
+        "correspondent": {
+          "name": "Korrespondent-ID",
+          "description": ""
+        },
+        "document_type": {
+          "name": "Dokumenttyp-ID",
+          "description": ""
+        },
+        "directory": {
+          "name": "Verzeichnis",
+          "description": "Nur für Ziel „Datei“; muss in allowlist_external_dirs stehen."
+        }
+      }
+    },
+    "batch_discard": {
+      "name": "Stapel: Verwerfen",
+      "description": "Leert den Zwischenspeicher.",
+      "fields": {
+        "config_entry": {
+          "name": "Scanner",
+          "description": "Bei mehreren Scannern auswählen."
         }
       }
     }

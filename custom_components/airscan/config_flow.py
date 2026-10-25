@@ -14,6 +14,8 @@ from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from .const import (
     COLOR_MODES,
+    CONF_BATCH_AUTO_SEND,
+    CONF_BATCH_TIMEOUT,
     CONF_COLOR_MODE,
     CONF_CORRESPONDENT,
     CONF_DOCUMENT_TYPE,
@@ -23,6 +25,7 @@ from .const import (
     CONF_ROOT,
     CONF_TAGS,
     CONF_TLS,
+    DEFAULT_BATCH_TIMEOUT,
     DEFAULT_COLOR_MODE,
     DEFAULT_PORT,
     DEFAULT_RESOLUTION,
@@ -47,6 +50,12 @@ def _options_schema(d: dict[str, Any]) -> vol.Schema:
             vol.Optional(
                 CONF_COLOR_MODE, default=d.get(CONF_COLOR_MODE, DEFAULT_COLOR_MODE)
             ): vol.In(COLOR_MODES),
+            vol.Optional(
+                CONF_BATCH_TIMEOUT, default=d.get(CONF_BATCH_TIMEOUT, DEFAULT_BATCH_TIMEOUT)
+            ): vol.All(vol.Coerce(int), vol.Range(min=0, max=1440)),
+            vol.Optional(
+                CONF_BATCH_AUTO_SEND, default=d.get(CONF_BATCH_AUTO_SEND, False)
+            ): bool,
         }
     )
 

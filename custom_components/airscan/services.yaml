@@ -47,3 +47,57 @@ scan:
     directory:
       selector:
         text:
+
+batch_add:
+  fields:
+    config_entry:
+      selector:
+        config_entry:
+          integration: airscan
+    resolution:
+      selector:
+        number:
+          min: 75
+          max: 1200
+          step: 75
+          unit_of_measurement: dpi
+    color_mode:
+      selector:
+        select:
+          translation_key: color_mode
+          options: [color, grayscale]
+
+batch_send:
+  fields:
+    config_entry:
+      selector:
+        config_entry:
+          integration: airscan
+    destination:
+      default: paperless
+      selector:
+        select:
+          translation_key: destination
+          options: [paperless, file]
+    title:
+      selector:
+        text:
+    tags:
+      selector:
+        text:
+    correspondent:
+      selector:
+        text:
+    document_type:
+      selector:
+        text:
+    directory:
+      selector:
+        text:
+
+batch_discard:
+  fields:
+    config_entry:
+      selector:
+        config_entry:
+          integration: airscan

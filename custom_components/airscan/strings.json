@@ -25,7 +25,9 @@
           "correspondent": "Correspondent ID",
           "document_type": "Document type ID",
           "resolution": "Resolution (dpi)",
-          "color_mode": "Color mode"
+          "color_mode": "Color mode",
+          "batch_timeout": "Forgotten batch after (minutes, 0 = off)",
+          "batch_auto_send": "Send forgotten batch automatically"
         }
       }
     },
@@ -51,7 +53,9 @@
           "correspondent": "Correspondent ID",
           "document_type": "Document type ID",
           "resolution": "Resolution (dpi)",
-          "color_mode": "Color mode"
+          "color_mode": "Color mode",
+          "batch_timeout": "Forgotten batch after (minutes, 0 = off)",
+          "batch_auto_send": "Send forgotten batch automatically"
         }
       }
     },
@@ -71,6 +75,15 @@
       },
       "scan_adf_duplex": {
         "name": "Scan feeder (double-sided)"
+      },
+      "batch_add": {
+        "name": "Batch: add page"
+      },
+      "batch_send": {
+        "name": "Batch: send"
+      },
+      "batch_discard": {
+        "name": "Batch: discard"
       }
     },
     "sensor": {
@@ -78,10 +91,20 @@
         "name": "Status",
         "state": {
           "idle": "Idle",
-          "processing": "Scanning",
-          "testing": "Testing",
-          "stopped": "Stopped",
-          "down": "Down"
+          "batch": "Batch open",
+          "running": "Running",
+          "done": "Done",
+          "error": "Error"
+        }
+      },
+      "pages": {
+        "name": "Pages"
+      },
+      "feeder": {
+        "name": "Feeder",
+        "state": {
+          "loaded": "Loaded",
+          "empty": "Empty"
         }
       }
     }
@@ -154,6 +177,68 @@
         "directory": {
           "name": "Directory",
           "description": "Only for destination “file”; must be in allowlist_external_dirs."
+        }
+      }
+    },
+    "batch_add": {
+      "name": "Batch: add page",
+      "description": "Scans one flatbed page into the buffer.",
+      "fields": {
+        "config_entry": {
+          "name": "Scanner",
+          "description": "Select when you have several scanners."
+        },
+        "resolution": {
+          "name": "Resolution (dpi)",
+          "description": "dpi"
+        },
+        "color_mode": {
+          "name": "Color mode",
+          "description": ""
+        }
+      }
+    },
+    "batch_send": {
+      "name": "Batch: send",
+      "description": "Builds one PDF from the batch and stores it.",
+      "fields": {
+        "config_entry": {
+          "name": "Scanner",
+          "description": "Select when you have several scanners."
+        },
+        "destination": {
+          "name": "Destination",
+          "description": ""
+        },
+        "title": {
+          "name": "Title",
+          "description": ""
+        },
+        "tags": {
+          "name": "Tag IDs",
+          "description": "Comma-separated tag IDs; overrides the defaults."
+        },
+        "correspondent": {
+          "name": "Correspondent ID",
+          "description": ""
+        },
+        "document_type": {
+          "name": "Document type ID",
+          "description": ""
+        },
+        "directory": {
+          "name": "Directory",
+          "description": "Only for destination “file”; must be in allowlist_external_dirs."
+        }
+      }
+    },
+    "batch_discard": {
+      "name": "Batch: discard",
+      "description": "Empties the buffer.",
+      "fields": {
+        "config_entry": {
+          "name": "Scanner",
+          "description": "Select when you have several scanners."
         }
       }
     }
