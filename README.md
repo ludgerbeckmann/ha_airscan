@@ -41,7 +41,7 @@ actions:
 
 **Manuell:** `custom_components/ha_airscan` nach `config/custom_components/` kopieren und neu starten.
 
-Die Domain lautet `ha_airscan`. Updates erscheinen in HACS, sobald im Repo ein GitHub-Release (z. B. `v0.1.0`, passend zur `version` in der `manifest.json`) veröffentlicht ist.
+Die Domain lautet `ha_airscan`. Releases entstehen automatisch: Ein Merge nach `main` mit neuer `version` in der `manifest.json` erzeugt Tag `vX.Y.Z` und GitHub-Release (`.github/workflows/release.yml`), HACS zeigt dann das Update.
 
 ## Paperless
 
