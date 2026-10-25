@@ -21,6 +21,7 @@ from .const import (
     COLOR_MODES,
     CONF_PAPERLESS_TOKEN,
     CONF_PAPERLESS_URL,
+    CONF_PAPERLESS_VERIFY_SSL,
     CONF_ROOT,
     CONF_TLS,
     DEFAULT_ROOT,
@@ -116,7 +117,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirscanConfigEntry) -> b
     paperless = None
     if entry.options.get(CONF_PAPERLESS_URL) and entry.options.get(CONF_PAPERLESS_TOKEN):
         paperless = PaperlessClient(
-            async_get_clientsession(hass),
+            async_get_clientsession(
+                hass, verify_ssl=entry.options.get(CONF_PAPERLESS_VERIFY_SSL, True)
+            ),
             entry.options[CONF_PAPERLESS_URL],
             entry.options[CONF_PAPERLESS_TOKEN],
         )

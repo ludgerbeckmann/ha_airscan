@@ -176,3 +176,48 @@ def test_size_limit(monkeypatch):
             else:
                 raise AssertionError("expected size error")
     _run(go())
+
+
+def test_paperless_client():
+    paperless = _load("paperless")
+
+    async def go():
+        seen = {}
+
+        async def docs(req):
+            seen["accept"] = req.headers["Accept"]
+            if req.headers.get("Authorization") != "Token good":
+                return web.Response(status=401)
+            return web.json_response({"results": []})
+
+        async def post(req):
+            form = await req.post()
+            seen["fields"] = sorted(form.keys())
+            seen["tags"] = form.getall("tags")
+            return web.Response(text='"task-123"')
+
+        app = web.Application()
+        app.router.add_get("/api/documents/", docs)
+        app.router.add_post("/api/documents/post_document/", post)
+        async with TestServer(app) as srv, aiohttp.ClientSession() as sess:
+            url = f"http://{srv.host}:{srv.port}"
+            ok = paperless.PaperlessClient(sess, url, "good")
+            await ok.check()
+            assert seen["accept"] == "application/json"  # no pinned API version
+            task = await ok.upload(b"%PDF", "scan.pdf", title="t", tags=["1", "2"])
+            assert task == "task-123" and seen["tags"] == ["1", "2"]
+            assert "document" in seen["fields"] and "title" in seen["fields"]
+            try:
+                await paperless.PaperlessClient(sess, url, "bad").check()
+            except paperless.PaperlessAuthError:
+                pass
+            else:
+                raise AssertionError("expected auth error")
+            try:
+                await paperless.PaperlessClient(sess, "http://127.0.0.1:1", "x").check()
+            except paperless.PaperlessError as err:
+                assert "ClientConnectorError" in str(err) or "Connect" in str(err)
+            else:
+                raise AssertionError("expected connection error")
+
+    _run(go())
