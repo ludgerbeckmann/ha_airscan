@@ -52,6 +52,8 @@ def test_status():
 def test_settings_duplex():
     x = escl.build_scan_settings(source="adf", duplex=True, resolution=300, color_mode="color", width=1, height=2)
     assert "Feeder" in x and "<scan:Duplex>true" in x and "RGB24" in x
+    x = escl.build_scan_settings(source="adf", duplex=False, resolution=300, color_mode="color", width=1, height=2)
+    assert "Feeder" in x and "Duplex" not in x
     x = escl.build_scan_settings(source="platen", duplex=False, resolution=300, color_mode="grayscale", width=1, height=2)
     assert "Platen" in x and "Duplex" not in x and "Grayscale8" in x
 
