@@ -32,7 +32,7 @@ cards:
     cards:
       - type: tile
         entity: button.epson_et_3950_series_scan_flachbett
-        name: Glas
+        name: Glas (zum Stapel)
         icon: mdi:file-document-outline
         vertical: true
         tap_action:
@@ -61,24 +61,15 @@ cards:
           target:
             entity_id: button.epson_et_3950_series_scan_einzug_beidseitig
 
-  # Stapelmodus am Glas: mehrere Seiten sammeln, dann als ein PDF senden
+  # Nach "Glas" liegt die Seite im Stapel: weitere Seiten mit "Glas" ergänzen,
+  # dann alles als ein PDF senden oder verwerfen.
   - type: grid
-    columns: 3
+    columns: 2
     square: false
     cards:
       - type: tile
-        entity: button.epson_et_3950_series_stapel_seite_hinzufugen
-        name: Seite +
-        icon: mdi:plus-box-multiple-outline
-        vertical: true
-        tap_action:
-          action: perform-action
-          perform-action: button.press
-          target:
-            entity_id: button.epson_et_3950_series_stapel_seite_hinzufugen
-      - type: tile
         entity: button.epson_et_3950_series_stapel_senden
-        name: Senden
+        name: Stapel senden
         icon: mdi:send-outline
         vertical: true
         tap_action:
@@ -88,7 +79,7 @@ cards:
             entity_id: button.epson_et_3950_series_stapel_senden
       - type: tile
         entity: button.epson_et_3950_series_stapel_verwerfen
-        name: Verwerfen
+        name: Stapel verwerfen
         icon: mdi:delete-outline
         vertical: true
         tap_action:

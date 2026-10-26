@@ -10,6 +10,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from homeassistant.helpers import entity_registry as er
+
 from . import AirscanConfigEntry
 from .const import DOMAIN
 from .scan import async_batch_add, async_batch_discard, async_batch_send, async_scan
@@ -26,7 +28,7 @@ class AirscanButtonDescription(ButtonEntityDescription):
 BUTTONS = (
     AirscanButtonDescription(
         key="platen", translation_key="scan_platen", needs="platen",
-        action=lambda h, e: async_scan(h, e, source="platen"),
+        action=lambda h, e: async_batch_add(h, e),
     ),
     AirscanButtonDescription(
         key="adf_simplex", translation_key="scan_adf_simplex", needs="adf_simplex",
@@ -35,10 +37,6 @@ BUTTONS = (
     AirscanButtonDescription(
         key="adf_duplex", translation_key="scan_adf_duplex", needs="adf_duplex",
         action=lambda h, e: async_scan(h, e, source="adf", duplex=True),
-    ),
-    AirscanButtonDescription(
-        key="batch_add", translation_key="batch_add", needs="platen",
-        action=lambda h, e: async_batch_add(h, e),
     ),
     AirscanButtonDescription(
         key="batch_send", translation_key="batch_send", needs="platen",
@@ -56,6 +54,10 @@ async def async_setup_entry(
 ) -> None:
     """Add the buttons the scanner supports."""
     caps = entry.runtime_data.capabilities
+    # "Seite hinzufügen" was merged into "Scan Flachbett"; drop the obsolete entity.
+    registry = er.async_get(hass)
+    if old := registry.async_get_entity_id("button", DOMAIN, f"{entry.unique_id}_batch_add"):
+        registry.async_remove(old)
     async_add_entities(
         AirscanButton(entry, d) for d in BUTTONS if getattr(caps, d.needs) is not None
     )

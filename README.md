@@ -8,7 +8,7 @@ Scannt über das Netzwerk (eSCL/AirScan, z. B. Epson-Multifunktionsgeräte) und 
 - **Aufwärmlogik für den Einzug:** Meldet der Drucker nach dem Standby fälschlich `ScannerAdfEmpty`, wird bis zu 2× ein winziger Flachbett-Scan (100 dpi, 10×10 mm) gemacht, um den Sensor zu aktualisieren. Liefert ein Scan 0 Seiten, gibt es bis zu 3 Versuche mit Pause.
 - Timeouts: Einzug 900 s, Flachbett 180 s; die Seitenzahl wird live aktualisiert
 - Immer nur ein Scan gleichzeitig; der eSCL-Job wird danach sauber gelöscht
-- **Stapelmodus am Flachbett:** „Seite hinzufügen“ sammelt Seiten im Speicher, „Senden“ baut ein PDF, „Verwerfen“ leert den Speicher. Wird der Stapel länger als X Minuten (Standard 30) nicht angefasst, feuert das Event `ha_airscan_batch_stale` oder – per Option – der Stapel wird automatisch gesendet.
+- **Flachbett arbeitet immer mit einem Stapel:** Der Button „Scan Flachbett“ legt die Seite in einen Zwischenspeicher. Beliebig oft wiederholen, dann „Stapel senden“ (ein PDF) oder „Stapel verwerfen“. Wird der Stapel länger als X Minuten (Standard 30) nicht angefasst, feuert das Event `ha_airscan_batch_stale` oder – per Option – er wird automatisch gesendet. Der Einzug scannt dagegen sofort und lädt direkt hoch. Der Service `ha_airscan.scan` mit `source: platen` sendet weiterhin sofort (für Automationen).
 - Ziel „Datei“ (z. B. Paperless-Consume-Ordner): Schreiben über eine versteckte Temp-Datei mit anschließendem Umbenennen, damit Ordnerüberwachung nie halbe PDFs sieht; vorher Prüfung auf mindestens 256 MiB freien Speicher
 - Grenzen: ein Scan oder Stapel darf höchstens 512 MiB groß sein; der Farbmodus wird gegen die Fähigkeiten der gewählten Quelle geprüft
 - Diagnose-Download in HA (Geräte & Dienste → Integration → ⋮) ohne Token, URL, Host und Scanner-UUID
@@ -19,7 +19,7 @@ Scannt über das Netzwerk (eSCL/AirScan, z. B. Epson-Multifunktionsgeräte) und 
 
 | Entität | Beschreibung |
 |---|---|
-| Buttons | Scan Flachbett / Einzug (einseitig) / Einzug (beidseitig), Stapel: hinzufügen / senden / verwerfen |
+| Buttons | Scan Flachbett / Einzug (einseitig) / Einzug (beidseitig), Stapel senden / verwerfen |
 | Sensor *Status* | `idle` (Bereit), `batch` (Stapel offen), `running` (Läuft), `done` (Fertig), `error` (Fehler); Attribut `detail` mit Klartext |
 | Sensor *Seiten* | Seiten des laufenden/letzten Jobs bzw. des offenen Stapels |
 | Sensor *Einzug* | `loaded` / `empty` laut Drucker (kann nach Standby veraltet sein) |

@@ -82,9 +82,6 @@
       "scan_adf_duplex": {
         "name": "Scan Einzug (beidseitig)"
       },
-      "batch_add": {
-        "name": "Stapel: Seite hinzufügen"
-      },
       "batch_send": {
         "name": "Stapel: Senden"
       },

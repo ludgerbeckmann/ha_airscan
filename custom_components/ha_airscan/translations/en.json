@@ -82,9 +82,6 @@
       "scan_adf_duplex": {
         "name": "Scan feeder (double-sided)"
       },
-      "batch_add": {
-        "name": "Batch: add page"
-      },
       "batch_send": {
         "name": "Batch: send"
       },
