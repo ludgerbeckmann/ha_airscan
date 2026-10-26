@@ -221,3 +221,48 @@ def test_paperless_client():
                 raise AssertionError("expected connection error")
 
     _run(go())
+
+
+def test_post_redirect_is_followed_as_post_and_405_is_explained():
+    async def go():
+        st = {"methods": []}
+
+        async def redirect(req):
+            return web.Response(status=307, headers={"Location": "/eSCL/Jobs2"})
+
+        async def jobs2(req):
+            st["methods"].append(req.method)
+            return web.Response(status=201, headers={"Location": "/eSCL/ScanJobs/f"})
+
+        async def next_doc(req):
+            if not st.get("sent"):
+                st["sent"] = True
+                return web.Response(body=_jpeg("RGB"), content_type="image/jpeg")
+            return web.Response(status=404)
+
+        async def nope(req):
+            return web.Response(status=405, headers={"Allow": "GET"}, text="Method Not Allowed")
+
+        app = web.Application()
+        app.router.add_post("/eSCL/ScanJobs", redirect)
+        app.router.add_post("/eSCL/Jobs2", jobs2)
+        app.router.add_get("/eSCL/ScanJobs/{job}/NextDocument", next_doc)
+        app.router.add_delete("/eSCL/ScanJobs/{job}", lambda r: web.Response())
+        app405 = web.Application()
+        app405.router.add_post("/eSCL/ScanJobs", nope)
+
+        xml = escl.build_scan_settings(source="platen", duplex=False, resolution=300, color_mode="color", width=1, height=1)
+        async with TestServer(app) as srv, aiohttp.ClientSession() as sess:
+            client = escl.EsclClient(sess, srv.host, srv.port, False)
+            assert len(await client.scan(xml, single_page=True, timeout=5)) == 1
+            assert st["methods"] == ["POST"]
+        async with TestServer(app405) as srv, aiohttp.ClientSession() as sess:
+            client = escl.EsclClient(sess, srv.host, srv.port, False)
+            try:
+                await client.scan(xml, single_page=True, timeout=5)
+            except escl.EsclError as err:
+                assert "405" in str(err) and "allowed: GET" in str(err) and "/eSCL/ScanJobs" in str(err)
+            else:
+                raise AssertionError("expected error")
+
+    _run(go())

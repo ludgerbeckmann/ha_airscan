@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 import xml.etree.ElementTree as ET
 
 import aiohttp
@@ -13,6 +14,8 @@ from aiohttp import ClientTimeout
 
 NS_PWG = "http://www.pwg.org/schemas/2010/12/sm"
 NS_SCAN = "http://schemas.hp.com/imaging/escl/2011/05/03"
+
+_LOGGER = logging.getLogger(__name__)
 
 COLOR_MODE_MAP = {"color": "RGB24", "grayscale": "Grayscale8"}
 
@@ -189,24 +192,46 @@ class EsclClient:
         the running page count.
         """
         loop = asyncio.get_running_loop()
-        try:
-            resp = await self._session.post(
-                f"{self._base}/ScanJobs",
-                data=settings_xml.encode(),
-                headers={"Content-Type": "text/xml"},
-                timeout=ClientTimeout(total=30),
-            )
-        except (aiohttp.ClientError, TimeoutError) as err:
-            raise EsclError(f"Cannot reach scanner: {err}") from err
-        async with resp:
-            if resp.status == 409:
-                raise EsclNoPagesError("Scanner refused the job (ADF empty or cover open?)")
-            if resp.status == 503:
-                raise EsclError("Scanner is busy")
-            if resp.status != 201 or not (location := resp.headers.get("Location")):
-                raise EsclError(f"Scan job rejected (HTTP {resp.status})")
+        url = f"{self._base}/ScanJobs"
+        location = None
+        for _ in range(3):  # POST must not be silently turned into a GET by a redirect
+            try:
+                resp = await self._session.post(
+                    url,
+                    data=settings_xml.encode(),
+                    headers={"Content-Type": "text/xml"},
+                    timeout=ClientTimeout(total=30),
+                    allow_redirects=False,
+                )
+            except (aiohttp.ClientError, TimeoutError) as err:
+                raise EsclError(f"Cannot reach scanner: {err}") from err
+            async with resp:
+                if resp.status in (301, 302, 303, 307, 308) and resp.headers.get("Location"):
+                    url = urljoin(url, resp.headers["Location"])
+                    _LOGGER.debug("ScanJobs redirected to %s", url)
+                    continue
+                if resp.status == 409:
+                    raise EsclNoPagesError("Scanner refused the job (ADF empty or cover open?)")
+                if resp.status == 503:
+                    raise EsclError("Scanner is busy")
+                if resp.status != 201 or not (location := resp.headers.get("Location")):
+                    body = (await resp.text(errors="replace"))[:200].strip()
+                    allow = resp.headers.get("Allow")
+                    _LOGGER.warning(
+                        "Scan job rejected: POST %s -> HTTP %s, Allow=%s, body=%r, settings=%s",
+                        url, resp.status, allow, body, settings_xml,
+                    )
+                    raise EsclError(
+                        f"Scan job rejected (HTTP {resp.status}) by POST {url}"
+                        + (f", allowed: {allow}" if allow else "")
+                        + (f", reply: {body}" if body else "")
+                    )
+                break
+        else:
+            raise EsclError("Too many redirects while creating the scan job")
         # Some devices answer with an absolute URL using a wrong scheme/host.
-        job_url = f"{self._origin}{urlparse(location).path}".rstrip("/")
+        job_origin = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
+        job_url = f"{job_origin}{urlparse(location).path}".rstrip("/")
 
         pages: list[bytes] = []
         try:
