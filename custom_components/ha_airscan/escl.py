@@ -138,7 +138,8 @@ def build_scan_settings(
         f"<scan:ColorMode>{COLOR_MODE_MAP[color_mode]}</scan:ColorMode>"
         f"<scan:XResolution>{resolution}</scan:XResolution>"
         f"<scan:YResolution>{resolution}</scan:YResolution>"
-        + (f"<scan:Duplex>{'true' if duplex else 'false'}</scan:Duplex>" if source == "adf" else "")
+        # Only ask for duplex when wanted; some devices dislike an explicit "false".
+        + ("<scan:Duplex>true</scan:Duplex>" if source == "adf" and duplex else "")
         + "</scan:ScanSettings>"
     )
 
