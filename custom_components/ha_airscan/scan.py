@@ -308,7 +308,7 @@ async def async_scan(
 def _batch_idle(data: AirscanData, detail: str | None = None) -> None:
     n = len(data.tracker.batch)
     if n:
-        data.tracker.update("batch", detail or f"Stapel: {n} Seite(n)", n)
+        data.tracker.update("batch", detail or f"Stapel: {n} Seite(n) – senden oder verwerfen", n)
     else:
         data.tracker.update("idle", detail or "Bereit", 0)
 
