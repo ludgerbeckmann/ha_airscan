@@ -74,6 +74,7 @@ SCAN_SCHEMA = vol.Schema(
         **_ENTRY,
         vol.Optional("source", default="platen"): vol.In(SOURCES),
         vol.Optional("duplex", default=False): cv.boolean,
+        vol.Optional("skip_blank"): cv.boolean,
         **_QUALITY,
         **_DELIVERY,
     }

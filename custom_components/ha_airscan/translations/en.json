@@ -28,7 +28,9 @@
           "color_mode": "Color mode",
           "batch_timeout": "Forgotten batch after (minutes, 0 = off)",
           "batch_auto_send": "Send forgotten batch automatically",
-          "paperless_verify_ssl": "Verify SSL certificate"
+          "paperless_verify_ssl": "Verify SSL certificate",
+          "blank_detection": "Remove blank pages from the feeder",
+          "blank_threshold": "Blank page threshold (% ink, higher = more aggressive)"
         }
       }
     },
@@ -57,7 +59,9 @@
           "color_mode": "Color mode",
           "batch_timeout": "Forgotten batch after (minutes, 0 = off)",
           "batch_auto_send": "Send forgotten batch automatically",
-          "paperless_verify_ssl": "Verify SSL certificate"
+          "paperless_verify_ssl": "Verify SSL certificate",
+          "blank_detection": "Remove blank pages from the feeder",
+          "blank_threshold": "Blank page threshold (% ink, higher = more aggressive)"
         }
       }
     },
@@ -179,6 +183,10 @@
         "directory": {
           "name": "Directory",
           "description": "Only for destination “file”; must be in allowlist_external_dirs."
+        },
+        "skip_blank": {
+          "name": "Remove blank pages",
+          "description": "Feeder only. Overrides the integration setting."
         }
       }
     },
