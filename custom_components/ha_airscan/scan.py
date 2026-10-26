@@ -15,6 +15,8 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_BATCH_AUTO_SEND,
     CONF_BATCH_TIMEOUT,
+    CONF_BLANK_DETECTION,
+    CONF_BLANK_THRESHOLD,
     CONF_COLOR_MODE,
     CONF_CORRESPONDENT,
     CONF_DOCUMENT_TYPE,
@@ -26,6 +28,7 @@ from .const import (
     EVENT_BATCH_STALE,
     EVENT_SCAN_FINISHED,
 )
+from .blank import DEFAULT_INK_PERCENT, filter_blank
 from .escl import (
     COLOR_MODE_MAP,
     MAX_BATCH_BYTES,
@@ -221,7 +224,13 @@ def _resolve(entry: AirscanConfigEntry, resolution: int | None, color_mode: str 
 
 def _finish(hass: HomeAssistant, entry: AirscanConfigEntry, result: dict) -> None:
     data = entry.runtime_data
-    data.tracker.update("done", f"{result['pages']} Seite(n) → {result['destination']}", result["pages"])
+    blank = result.get("blank_removed", 0)
+    data.tracker.update(
+        "done",
+        f"{result['pages']} Seite(n) → {result['destination']}"
+        + (f" ({blank} leer entfernt)" if blank else ""),
+        result["pages"],
+    )
     hass.bus.async_fire(EVENT_SCAN_FINISHED, {"entry_id": entry.entry_id, **result})
 
 
@@ -246,8 +255,13 @@ async def async_scan(
     correspondent: str | None = None,
     document_type: str | None = None,
     directory: str | None = None,
+    skip_blank: bool | None = None,
 ) -> dict:
-    """Scan (flatbed = one page, ADF = whole stack) and deliver the PDF."""
+    """Scan (flatbed = one page, ADF = whole stack) and deliver the PDF.
+
+    Blank page removal only applies to the feeder; it follows the integration
+    option unless `skip_blank` is given.
+    """
     data = entry.runtime_data
     duplex = duplex and source == "adf"
     src_caps = _source_caps(data, source, duplex)
@@ -261,11 +275,26 @@ async def async_scan(
             pages = await _run_scan(
                 data, source=source, duplex=duplex, resolution=dpi, color_mode=color, src_caps=src_caps
             )
+            removed = 0
+            if source == "adf" and (
+                entry.options.get(CONF_BLANK_DETECTION, False)
+                if skip_blank is None
+                else skip_blank
+            ):
+                data.tracker.update(detail="Prüfe auf Leerseiten…")
+                pages, removed = await hass.async_add_executor_job(
+                    filter_blank, pages, float(entry.options.get(CONF_BLANK_THRESHOLD, DEFAULT_INK_PERCENT))
+                )
+                if not pages:
+                    raise HomeAssistantError(
+                        "Alle Seiten wurden als leer erkannt – Papier richtig eingelegt?"
+                    )
             data.tracker.update(detail="Erzeuge PDF und speichere…")
             result = await _deliver(
                 hass, entry, pages, dpi, destination=destination, title=title, tags=tags,
                 correspondent=correspondent, document_type=document_type, directory=directory,
             )
+            result["blank_removed"] = removed
         except (EsclError, HomeAssistantError) as err:
             raise _fail(data, err) from err
     _finish(hass, entry, result)

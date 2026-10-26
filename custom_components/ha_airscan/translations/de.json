@@ -28,7 +28,9 @@
           "color_mode": "Farbmodus",
           "batch_timeout": "Stapel vergessen nach (Minuten, 0 = aus)",
           "batch_auto_send": "Vergessenen Stapel automatisch senden",
-          "paperless_verify_ssl": "SSL-Zertifikat prüfen"
+          "paperless_verify_ssl": "SSL-Zertifikat prüfen",
+          "blank_detection": "Leerseiten im Einzug entfernen",
+          "blank_threshold": "Leerseiten-Schwelle (% Tintenanteil, höher = aggressiver)"
         }
       }
     },
@@ -57,7 +59,9 @@
           "color_mode": "Farbmodus",
           "batch_timeout": "Stapel vergessen nach (Minuten, 0 = aus)",
           "batch_auto_send": "Vergessenen Stapel automatisch senden",
-          "paperless_verify_ssl": "SSL-Zertifikat prüfen"
+          "paperless_verify_ssl": "SSL-Zertifikat prüfen",
+          "blank_detection": "Leerseiten im Einzug entfernen",
+          "blank_threshold": "Leerseiten-Schwelle (% Tintenanteil, höher = aggressiver)"
         }
       }
     },
@@ -179,6 +183,10 @@
         "directory": {
           "name": "Verzeichnis",
           "description": "Nur für Ziel „Datei“; muss in allowlist_external_dirs stehen."
+        },
+        "skip_blank": {
+          "name": "Leerseiten entfernen",
+          "description": "Nur Einzug. Überschreibt die Einstellung der Integration."
         }
       }
     },

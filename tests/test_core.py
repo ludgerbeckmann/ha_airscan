@@ -268,3 +268,51 @@ def test_post_redirect_is_followed_as_post_and_405_is_explained():
                 raise AssertionError("expected error")
 
     _run(go())
+
+
+# --- blank page detection ---------------------------------------------------
+
+from PIL import ImageDraw
+
+
+def _page(draw_fn=None, base=255, size=(1240, 1754)):
+    img = Image.new("L", size, base)
+    if draw_fn:
+        draw_fn(ImageDraw.Draw(img), size)
+    b = BytesIO()
+    img.convert("RGB").save(b, "JPEG", quality=85)
+    return b.getvalue()
+
+
+def _text(lines):
+    def draw(d, size):
+        for i in range(lines):
+            y = 150 + i * 40
+            for x in range(120, size[0] - 120, 30):  # word-like blocks
+                d.rectangle([x, y, x + 20, y + 14], fill=20)
+    return draw
+
+
+def test_blank_detection():
+    blank = _load("blank")
+    white = _page()
+    dust = _page(lambda d, s: [d.ellipse([300 + i * 90, 700, 304 + i * 90, 704], fill=60) for i in range(5)])
+    showthrough = _page(_text(30), base=255)
+    # faint mirrored text of the other side shining through thin paper
+    faint = _page(lambda d, s: [d.rectangle([x, y, x + 20, y + 14], fill=228) for y in range(150, 1350, 40) for x in range(120, 1100, 30)])
+    shadow_border = _page(lambda d, s: (d.rectangle([0, 0, s[0], 30], fill=90), d.rectangle([0, 0, 25, s[1]], fill=90)))
+    full_text = _page(_text(35))
+    short_letter = _page(_text(4))  # only a few lines: must NOT be dropped at the default threshold
+    black = _page(base=10)
+
+    assert blank.is_blank(white) and blank.is_blank(dust)
+    assert blank.is_blank(faint), "faint show-through must count as blank"
+    assert blank.is_blank(shadow_border), "scanner border shadow is ignored"
+    assert not blank.is_blank(full_text)
+    assert not blank.is_blank(short_letter)
+    assert not blank.is_blank(black), "a dark page is content, not blank"
+    assert showthrough  # sanity: generator works
+
+    kept, removed = blank.filter_blank([full_text, white, short_letter, faint, full_text])
+    assert removed == 2 and kept == [full_text, short_letter, full_text]  # order preserved
+    assert blank.filter_blank([white, faint]) == ([], 2)

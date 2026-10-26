@@ -17,6 +17,8 @@ from .const import (
     COLOR_MODES,
     CONF_BATCH_AUTO_SEND,
     CONF_BATCH_TIMEOUT,
+    CONF_BLANK_DETECTION,
+    CONF_BLANK_THRESHOLD,
     CONF_COLOR_MODE,
     CONF_CORRESPONDENT,
     CONF_DOCUMENT_TYPE,
@@ -34,6 +36,7 @@ from .const import (
     DEFAULT_ROOT,
     DOMAIN,
 )
+from .blank import DEFAULT_INK_PERCENT
 from .escl import EsclClient, EsclError
 from .paperless import PaperlessAuthError, PaperlessClient, PaperlessError
 
@@ -63,6 +66,12 @@ def _options_schema(d: dict[str, Any]) -> vol.Schema:
             vol.Optional(
                 CONF_BATCH_AUTO_SEND, default=d.get(CONF_BATCH_AUTO_SEND, False)
             ): bool,
+            vol.Optional(
+                CONF_BLANK_DETECTION, default=d.get(CONF_BLANK_DETECTION, False)
+            ): bool,
+            vol.Optional(
+                CONF_BLANK_THRESHOLD, default=d.get(CONF_BLANK_THRESHOLD, DEFAULT_INK_PERCENT)
+            ): vol.All(vol.Coerce(float), vol.Range(min=0.01, max=5)),
         }
     )
 
