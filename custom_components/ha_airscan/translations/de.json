@@ -31,7 +31,8 @@
           "paperless_verify_ssl": "SSL-Zertifikat prüfen",
           "blank_detection": "Leerseiten im Einzug entfernen",
           "blank_threshold": "Leerseiten-Schwelle (% Tintenanteil, höher = aggressiver)",
-          "page_size": "Papierformat"
+          "page_size": "Papierformat",
+          "adf_align": "Papierlage im Einzug"
         }
       }
     },
@@ -63,7 +64,8 @@
           "paperless_verify_ssl": "SSL-Zertifikat prüfen",
           "blank_detection": "Leerseiten im Einzug entfernen",
           "blank_threshold": "Leerseiten-Schwelle (% Tintenanteil, höher = aggressiver)",
-          "page_size": "Papierformat"
+          "page_size": "Papierformat",
+          "adf_align": "Papierlage im Einzug"
         }
       }
     },
@@ -147,6 +149,14 @@
         "letter": "Letter",
         "legal": "Legal",
         "max": "Maximale Scanfläche"
+      }
+    },
+    "adf_align": {
+      "options": {
+        "auto": "Automatisch (vom Scanner)",
+        "left": "Links",
+        "center": "Mitte",
+        "right": "Rechts"
       }
     }
   },

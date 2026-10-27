@@ -31,7 +31,8 @@
           "paperless_verify_ssl": "Verify SSL certificate",
           "blank_detection": "Remove blank pages from the feeder",
           "blank_threshold": "Blank page threshold (% ink, higher = more aggressive)",
-          "page_size": "Paper size"
+          "page_size": "Paper size",
+          "adf_align": "Sheet position in the feeder"
         }
       }
     },
@@ -63,7 +64,8 @@
           "paperless_verify_ssl": "Verify SSL certificate",
           "blank_detection": "Remove blank pages from the feeder",
           "blank_threshold": "Blank page threshold (% ink, higher = more aggressive)",
-          "page_size": "Paper size"
+          "page_size": "Paper size",
+          "adf_align": "Sheet position in the feeder"
         }
       }
     },
@@ -147,6 +149,14 @@
         "letter": "Letter",
         "legal": "Legal",
         "max": "Full scan area"
+      }
+    },
+    "adf_align": {
+      "options": {
+        "auto": "Automatic (from scanner)",
+        "left": "Left",
+        "center": "Center",
+        "right": "Right"
       }
     }
   },

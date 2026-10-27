@@ -15,6 +15,7 @@ from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from .const import (
     COLOR_MODES,
+    CONF_ADF_ALIGN,
     CONF_BATCH_AUTO_SEND,
     CONF_BATCH_TIMEOUT,
     CONF_BLANK_DETECTION,
@@ -30,10 +31,12 @@ from .const import (
     CONF_ROOT,
     CONF_TAGS,
     CONF_TLS,
+    DEFAULT_ADF_ALIGN,
     DEFAULT_BATCH_TIMEOUT,
     DEFAULT_COLOR_MODE,
     DEFAULT_PAGE_SIZE,
     DEFAULT_PORT,
+    ADF_ALIGN_OPTIONS,
     PAGE_SIZE_OPTIONS,
     DEFAULT_RESOLUTION,
     DEFAULT_ROOT,
@@ -66,6 +69,9 @@ def _options_schema(d: dict[str, Any]) -> vol.Schema:
             vol.Optional(
                 CONF_PAGE_SIZE, default=d.get(CONF_PAGE_SIZE, DEFAULT_PAGE_SIZE)
             ): vol.In(PAGE_SIZE_OPTIONS),
+            vol.Optional(
+                CONF_ADF_ALIGN, default=d.get(CONF_ADF_ALIGN, DEFAULT_ADF_ALIGN)
+            ): vol.In(ADF_ALIGN_OPTIONS),
             vol.Optional(
                 CONF_BATCH_TIMEOUT, default=d.get(CONF_BATCH_TIMEOUT, DEFAULT_BATCH_TIMEOUT)
             ): vol.All(vol.Coerce(int), vol.Range(min=0, max=1440)),
