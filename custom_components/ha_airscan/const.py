@@ -13,6 +13,7 @@ CONF_TAGS = "tags"
 CONF_CORRESPONDENT = "correspondent"
 CONF_DOCUMENT_TYPE = "document_type"
 CONF_BATCH_TIMEOUT = "batch_timeout"
+CONF_PAGE_SIZE = "page_size"
 CONF_BLANK_DETECTION = "blank_detection"
 CONF_BLANK_THRESHOLD = "blank_threshold"
 CONF_BATCH_AUTO_SEND = "batch_auto_send"
@@ -21,10 +22,12 @@ DEFAULT_PORT = 80
 DEFAULT_ROOT = "eSCL"
 DEFAULT_RESOLUTION = 300
 DEFAULT_COLOR_MODE = "color"
+DEFAULT_PAGE_SIZE = "a4"
 DEFAULT_BATCH_TIMEOUT = 30  # minutes, 0 = off
 
 COLOR_MODES = ["color", "grayscale"]
 SOURCES = ["platen", "adf"]
+PAGE_SIZE_OPTIONS = ["a4", "a5", "letter", "legal", "max"]
 DESTINATIONS = ["paperless", "file"]
 
 SERVICE_SCAN = "scan"

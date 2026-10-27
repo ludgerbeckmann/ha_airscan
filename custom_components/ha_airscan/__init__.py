@@ -26,6 +26,7 @@ from .const import (
     CONF_TLS,
     DEFAULT_ROOT,
     DESTINATIONS,
+    PAGE_SIZE_OPTIONS,
     DOMAIN,
     SERVICE_BATCH_ADD,
     SERVICE_BATCH_DISCARD,
@@ -58,6 +59,7 @@ type AirscanConfigEntry = ConfigEntry[AirscanData]
 
 _ENTRY = {vol.Optional("config_entry"): cv.string}
 _QUALITY = {
+    vol.Optional("page_size"): vol.In(PAGE_SIZE_OPTIONS),
     vol.Optional("resolution"): vol.Coerce(int),
     vol.Optional("color_mode"): vol.In(COLOR_MODES),
 }

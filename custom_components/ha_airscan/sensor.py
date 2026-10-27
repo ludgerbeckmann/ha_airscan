@@ -11,9 +11,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import AirscanConfigEntry
 from .const import DOMAIN
+from .escl import ADF_STATE_OPTIONS, adf_state_key
 from .state import STATUSES
-
-ADF_STATES = {"scanneradfloaded": "loaded", "scanneradfempty": "empty"}
 
 
 def _device(entry: AirscanConfigEntry) -> DeviceInfo:
@@ -95,7 +94,7 @@ class FeederSensor(CoordinatorEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "feeder"
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = ["loaded", "empty"]
+    _attr_options = ADF_STATE_OPTIONS
 
     def __init__(self, entry: AirscanConfigEntry) -> None:
         super().__init__(entry.runtime_data.coordinator)
@@ -105,7 +104,7 @@ class FeederSensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self) -> str | None:
         """Feeder state; may be stale after standby (a scan refreshes it)."""
-        return ADF_STATES.get((self.coordinator.data.adf_state or "").lower())
+        return adf_state_key(self.coordinator.data.adf_state)
 
     @property
     def extra_state_attributes(self) -> dict[str, str | None]:

@@ -30,7 +30,8 @@
           "batch_auto_send": "Send forgotten batch automatically",
           "paperless_verify_ssl": "Verify SSL certificate",
           "blank_detection": "Remove blank pages from the feeder",
-          "blank_threshold": "Blank page threshold (% ink, higher = more aggressive)"
+          "blank_threshold": "Blank page threshold (% ink, higher = more aggressive)",
+          "page_size": "Paper size"
         }
       }
     },
@@ -61,7 +62,8 @@
           "batch_auto_send": "Send forgotten batch automatically",
           "paperless_verify_ssl": "Verify SSL certificate",
           "blank_detection": "Remove blank pages from the feeder",
-          "blank_threshold": "Blank page threshold (% ink, higher = more aggressive)"
+          "blank_threshold": "Blank page threshold (% ink, higher = more aggressive)",
+          "page_size": "Paper size"
         }
       }
     },
@@ -107,7 +109,11 @@
         "name": "Feeder",
         "state": {
           "loaded": "Loaded",
-          "empty": "Empty"
+          "empty": "Empty",
+          "processing": "Busy",
+          "jam": "Jam",
+          "cover_open": "Cover open",
+          "error": "Error"
         }
       }
     }
@@ -129,6 +135,15 @@
       "options": {
         "paperless": "Paperless-ngx",
         "file": "File"
+      }
+    },
+    "page_size": {
+      "options": {
+        "a4": "A4",
+        "a5": "A5",
+        "letter": "Letter",
+        "legal": "Legal",
+        "max": "Full scan area"
       }
     }
   },
@@ -184,6 +199,10 @@
         "skip_blank": {
           "name": "Remove blank pages",
           "description": "Feeder only. Overrides the integration setting."
+        },
+        "page_size": {
+          "name": "Paper size",
+          "description": "Limits the scan area to avoid white borders."
         }
       }
     },
@@ -202,6 +221,10 @@
         "color_mode": {
           "name": "Color mode",
           "description": ""
+        },
+        "page_size": {
+          "name": "Paper size",
+          "description": "Limits the scan area to avoid white borders."
         }
       }
     },

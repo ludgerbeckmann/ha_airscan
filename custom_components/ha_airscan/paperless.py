@@ -10,6 +10,10 @@ class PaperlessError(Exception):
     """Generic Paperless error."""
 
 
+class PaperlessTaskFailed(PaperlessError):
+    """Paperless accepted the upload but failed to ingest the document."""
+
+
 class PaperlessAuthError(PaperlessError):
     """Token rejected."""
 
@@ -79,3 +83,32 @@ class PaperlessClient:
                 return (await resp.text()).strip().strip('"')
         except (aiohttp.ClientError, TimeoutError) as err:
             raise PaperlessError(f"{type(err).__name__}: {err}") from err
+
+    async def task_status(self, task_id: str) -> dict | None:
+        """Return {"finished": bool, "related_document": id|None}, or None if unknown.
+
+        Raises PaperlessTaskFailed with Paperless' own reason (e.g. duplicate).
+        """
+        try:
+            async with self._session.get(
+                f"{self._url}/api/tasks/",
+                params={"task_id": task_id},
+                headers=self._headers,
+                timeout=ClientTimeout(total=15),
+            ) as resp:
+                if resp.status != 200:
+                    return None  # no permission / old version: do not block the scan
+                payload = await resp.json(content_type=None)
+        except (aiohttp.ClientError, TimeoutError, ValueError) as err:
+            raise PaperlessError(f"{type(err).__name__}: {err}") from err
+        tasks = payload.get("results", []) if isinstance(payload, dict) else payload
+        if not tasks:
+            return {"finished": False, "related_document": None}  # not registered yet
+        task = tasks[0]
+        status = str(task.get("status", "")).upper()
+        if status in ("FAILURE", "REVOKED"):
+            raise PaperlessTaskFailed(str(task.get("result") or status).strip())
+        return {
+            "finished": status == "SUCCESS",
+            "related_document": task.get("related_document"),
+        }

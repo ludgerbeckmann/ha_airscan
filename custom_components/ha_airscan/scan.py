@@ -20,10 +20,12 @@ from .const import (
     CONF_COLOR_MODE,
     CONF_CORRESPONDENT,
     CONF_DOCUMENT_TYPE,
+    CONF_PAGE_SIZE,
     CONF_RESOLUTION,
     CONF_TAGS,
     DEFAULT_BATCH_TIMEOUT,
     DEFAULT_COLOR_MODE,
+    DEFAULT_PAGE_SIZE,
     DEFAULT_RESOLUTION,
     EVENT_BATCH_STALE,
     EVENT_SCAN_FINISHED,
@@ -36,9 +38,10 @@ from .escl import (
     EsclNoPagesError,
     SourceCaps,
     build_scan_settings,
+    scan_region,
 )
 from .files import FileOutputError, write_atomic
-from .paperless import PaperlessError
+from .paperless import PaperlessError, PaperlessTaskFailed
 from .pdf import jpegs_to_pdf
 
 if TYPE_CHECKING:
@@ -46,6 +49,8 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
+PAPERLESS_TASK_TIMEOUT = 120
+PAPERLESS_TASK_INTERVAL = 2
 TIMEOUT_ADF = 900
 TIMEOUT_PLATEN = 180
 WARMUP_ATTEMPTS = 2
@@ -122,16 +127,20 @@ async def _run_scan(
     resolution: int,
     color_mode: str,
     src_caps: SourceCaps,
+    page_size: str = DEFAULT_PAGE_SIZE,
 ) -> list[bytes]:
     """Scan with warm-up and up to SCAN_ATTEMPTS tries when no page arrives."""
     tracker = data.tracker
+    width, height, x_off, y_off = scan_region(src_caps, page_size)
     settings = build_scan_settings(
         source=source,
         duplex=duplex,
         resolution=resolution,
         color_mode=color_mode,
-        width=src_caps.max_width,
-        height=src_caps.max_height,
+        width=width,
+        height=height,
+        x_offset=x_off,
+        y_offset=y_off,
     )
 
     def _on_page(n: int) -> None:
@@ -191,6 +200,7 @@ async def _deliver(
             )
         except PaperlessError as err:
             raise HomeAssistantError(f"Upload zu Paperless fehlgeschlagen: {err}") from err
+        await _wait_for_paperless(data, result)
     else:
         target = Path(directory) / filename
         try:
@@ -199,6 +209,33 @@ async def _deliver(
             raise HomeAssistantError(str(err)) from err
         result["path"] = str(target)
     return result
+
+
+async def _wait_for_paperless(data: AirscanData, result: dict) -> None:
+    """Report 'done' only once Paperless has really ingested the document.
+
+    The upload returns as soon as Paperless queued the file; OCR and duplicate
+    checks run afterwards and can still fail. Tokens without access to the task
+    list are fine: we then just keep the upload as success.
+    """
+    data.tracker.update(detail="Paperless verarbeitet das Dokument…")
+    deadline = asyncio.get_running_loop().time() + PAPERLESS_TASK_TIMEOUT
+    while asyncio.get_running_loop().time() < deadline:
+        try:
+            task = await data.paperless.task_status(result["task_id"])
+        except PaperlessTaskFailed as err:
+            raise HomeAssistantError(f"Paperless hat das Dokument abgelehnt: {err}") from err
+        except PaperlessError as err:
+            _LOGGER.debug("Paperless task status unavailable: %s", err)
+            return
+        if task is None:
+            return
+        if task.get("related_document"):
+            result["document_id"] = task["related_document"]
+        if task.get("finished"):
+            return
+        await asyncio.sleep(PAPERLESS_TASK_INTERVAL)
+    result["paperless_pending"] = True  # still being processed; not an error
 
 
 def _check_destination(hass: HomeAssistant, data: AirscanData, destination: str, directory: str | None) -> None:
@@ -228,6 +265,8 @@ def _finish(hass: HomeAssistant, entry: AirscanConfigEntry, result: dict) -> Non
     data.tracker.update(
         "done",
         f"{result['pages']} Seite(n) → {result['destination']}"
+        + (f" (Dokument #{result['document_id']})" if result.get("document_id") else "")
+        + (" – Paperless verarbeitet noch" if result.get("paperless_pending") else "")
         + (f" ({blank} leer entfernt)" if blank else ""),
         result["pages"],
     )
@@ -256,6 +295,7 @@ async def async_scan(
     document_type: str | None = None,
     directory: str | None = None,
     skip_blank: bool | None = None,
+    page_size: str | None = None,
 ) -> dict:
     """Scan (flatbed = one page, ADF = whole stack) and deliver the PDF.
 
@@ -273,7 +313,9 @@ async def async_scan(
         data.tracker.update("running", "Scan startet", 0)
         try:
             pages = await _run_scan(
-                data, source=source, duplex=duplex, resolution=dpi, color_mode=color, src_caps=src_caps
+                data, source=source, duplex=duplex, resolution=dpi, color_mode=color,
+                src_caps=src_caps,
+                page_size=page_size or entry.options.get(CONF_PAGE_SIZE, DEFAULT_PAGE_SIZE),
             )
             removed = 0
             if source == "adf" and (
@@ -345,6 +387,7 @@ async def async_batch_add(
     *,
     resolution: int | None = None,
     color_mode: str | None = None,
+    page_size: str | None = None,
 ) -> dict:
     """Scan one flatbed page into the batch buffer."""
     data = entry.runtime_data
@@ -359,7 +402,9 @@ async def async_batch_add(
         data.tracker.update("running", "Scan startet")
         try:
             pages = await _run_scan(
-                data, source="platen", duplex=False, resolution=dpi, color_mode=color, src_caps=src_caps
+                data, source="platen", duplex=False, resolution=dpi, color_mode=color,
+                src_caps=src_caps,
+                page_size=page_size or entry.options.get(CONF_PAGE_SIZE, DEFAULT_PAGE_SIZE),
             )
         except EsclError as err:
             error = _fail(data, err)
