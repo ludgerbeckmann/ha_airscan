@@ -316,3 +316,74 @@ def test_blank_detection():
     kept, removed = blank.filter_blank([full_text, white, short_letter, faint, full_text])
     assert removed == 2 and kept == [full_text, short_letter, full_text]  # order preserved
     assert blank.filter_blank([white, faint]) == ([], 2)
+
+
+# --- page size / feeder states / paperless task ---------------------------------
+
+
+def test_scan_region_cuts_legal_feeder_to_a4():
+    legal_feeder = escl.SourceCaps(max_width=2550, max_height=4200)  # as in the real PDF
+    # Alignment unknown: keep the full width (a centred sheet must not lose its edge), cut the height.
+    assert escl.scan_region(legal_feeder, "a4") == (2550, 3508, 0, 0)
+    assert escl.scan_region(legal_feeder, "legal") == (2550, 4200, 0, 0)
+    assert escl.scan_region(legal_feeder, "max") == (2550, 4200, 0, 0)
+    # Alignment known: narrow to the paper and place the region accordingly.
+    centred = escl.SourceCaps(max_width=2550, max_height=4200, x_align="Center", y_align="Top")
+    assert escl.scan_region(centred, "a4") == (2480, 3508, 35, 0)
+    right = escl.SourceCaps(max_width=2550, max_height=4200, x_align="Right")
+    assert escl.scan_region(right, "a4") == (2480, 3508, 70, 0)
+    # Never larger than the device can do.
+    small = escl.SourceCaps(max_width=2400, max_height=3000)
+    assert escl.scan_region(small, "a4") == (2400, 3000, 0, 0)
+    x = escl.build_scan_settings(source="adf", duplex=False, resolution=300, color_mode="color",
+                                 width=2480, height=3508, x_offset=35, y_offset=0)
+    assert "<pwg:XOffset>35</pwg:XOffset>" in x and "<pwg:Height>3508</pwg:Height>" in x
+
+
+def test_capabilities_alignment_is_parsed():
+    xml = CAPS.replace("<scan:Adf>", "<scan:Adf><scan:XImagePosition>Center</scan:XImagePosition><scan:YImagePosition>Top</scan:YImagePosition>")
+    caps = escl.parse_capabilities(xml)
+    assert (caps.adf_simplex.x_align, caps.adf_simplex.y_align) == ("Center", "Top")
+    assert caps.platen.x_align is None
+
+
+def test_feeder_states_do_not_become_unknown():
+    assert escl.adf_state_key("ScannerAdfLoaded") == "loaded"
+    assert escl.adf_state_key("ScannerAdfEmpty") == "empty"
+    assert escl.adf_state_key("ScannerAdfProcessing") == "processing"  # appears during a scan
+    assert escl.adf_state_key("ScannerAdfJam") == "jam"
+    assert escl.adf_state_key("SomethingNew") == "error"  # unknown vendor value is still a valid option
+    assert escl.adf_state_key(None) is None
+    assert {escl.adf_state_key(k) for k in ("ScannerAdfProcessing", "ScannerAdfJam", "ScannerAdfHatchOpen", "x")} <= set(escl.ADF_STATE_OPTIONS)
+
+
+def test_paperless_task_status():
+    paperless = _load("paperless")
+
+    async def go():
+        tasks = {"t-ok": {"status": "SUCCESS", "related_document": 123},
+                 "t-run": {"status": "STARTED", "related_document": None},
+                 "t-dup": {"status": "FAILURE", "result": "scan.pdf: Not consuming scan.pdf: It is a duplicate of Foo (#7)"}}
+
+        async def handler(req):
+            tid = req.query["task_id"]
+            if tid == "forbidden":
+                return web.Response(status=403)
+            return web.json_response([{"task_id": tid, **tasks[tid]}] if tid in tasks else [])
+
+        app = web.Application()
+        app.router.add_get("/api/tasks/", handler)
+        async with TestServer(app) as srv, aiohttp.ClientSession() as sess:
+            c = paperless.PaperlessClient(sess, f"http://{srv.host}:{srv.port}", "t")
+            assert await c.task_status("t-ok") == {"finished": True, "related_document": 123}
+            assert (await c.task_status("t-run"))["finished"] is False
+            assert (await c.task_status("unknown"))["finished"] is False  # not registered yet
+            assert await c.task_status("forbidden") is None  # token without task access: do not block
+            try:
+                await c.task_status("t-dup")
+            except paperless.PaperlessTaskFailed as err:
+                assert "duplicate" in str(err)
+            else:
+                raise AssertionError("expected PaperlessTaskFailed")
+
+    _run(go())

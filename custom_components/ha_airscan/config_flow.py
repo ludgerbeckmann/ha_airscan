@@ -26,12 +26,15 @@ from .const import (
     CONF_PAPERLESS_URL,
     CONF_PAPERLESS_VERIFY_SSL,
     CONF_RESOLUTION,
+    CONF_PAGE_SIZE,
     CONF_ROOT,
     CONF_TAGS,
     CONF_TLS,
     DEFAULT_BATCH_TIMEOUT,
     DEFAULT_COLOR_MODE,
+    DEFAULT_PAGE_SIZE,
     DEFAULT_PORT,
+    PAGE_SIZE_OPTIONS,
     DEFAULT_RESOLUTION,
     DEFAULT_ROOT,
     DOMAIN,
@@ -60,6 +63,9 @@ def _options_schema(d: dict[str, Any]) -> vol.Schema:
             vol.Optional(
                 CONF_COLOR_MODE, default=d.get(CONF_COLOR_MODE, DEFAULT_COLOR_MODE)
             ): vol.In(COLOR_MODES),
+            vol.Optional(
+                CONF_PAGE_SIZE, default=d.get(CONF_PAGE_SIZE, DEFAULT_PAGE_SIZE)
+            ): vol.In(PAGE_SIZE_OPTIONS),
             vol.Optional(
                 CONF_BATCH_TIMEOUT, default=d.get(CONF_BATCH_TIMEOUT, DEFAULT_BATCH_TIMEOUT)
             ): vol.All(vol.Coerce(int), vol.Range(min=0, max=1440)),

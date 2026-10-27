@@ -30,7 +30,8 @@
           "batch_auto_send": "Vergessenen Stapel automatisch senden",
           "paperless_verify_ssl": "SSL-Zertifikat prüfen",
           "blank_detection": "Leerseiten im Einzug entfernen",
-          "blank_threshold": "Leerseiten-Schwelle (% Tintenanteil, höher = aggressiver)"
+          "blank_threshold": "Leerseiten-Schwelle (% Tintenanteil, höher = aggressiver)",
+          "page_size": "Papierformat"
         }
       }
     },
@@ -61,7 +62,8 @@
           "batch_auto_send": "Vergessenen Stapel automatisch senden",
           "paperless_verify_ssl": "SSL-Zertifikat prüfen",
           "blank_detection": "Leerseiten im Einzug entfernen",
-          "blank_threshold": "Leerseiten-Schwelle (% Tintenanteil, höher = aggressiver)"
+          "blank_threshold": "Leerseiten-Schwelle (% Tintenanteil, höher = aggressiver)",
+          "page_size": "Papierformat"
         }
       }
     },
@@ -107,7 +109,11 @@
         "name": "Einzug",
         "state": {
           "loaded": "Geladen",
-          "empty": "Leer"
+          "empty": "Leer",
+          "processing": "Arbeitet",
+          "jam": "Papierstau",
+          "cover_open": "Abdeckung offen",
+          "error": "Fehler"
         }
       }
     }
@@ -129,6 +135,15 @@
       "options": {
         "paperless": "Paperless-ngx",
         "file": "Datei"
+      }
+    },
+    "page_size": {
+      "options": {
+        "a4": "A4",
+        "a5": "A5",
+        "letter": "Letter",
+        "legal": "Legal",
+        "max": "Maximale Scanfläche"
       }
     }
   },
@@ -184,6 +199,10 @@
         "skip_blank": {
           "name": "Leerseiten entfernen",
           "description": "Nur Einzug. Überschreibt die Einstellung der Integration."
+        },
+        "page_size": {
+          "name": "Papierformat",
+          "description": "Begrenzt den Scanbereich, damit keine weißen Ränder entstehen."
         }
       }
     },
@@ -202,6 +221,10 @@
         "color_mode": {
           "name": "Farbmodus",
           "description": ""
+        },
+        "page_size": {
+          "name": "Papierformat",
+          "description": "Begrenzt den Scanbereich, damit keine weißen Ränder entstehen."
         }
       }
     },
