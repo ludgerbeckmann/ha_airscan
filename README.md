@@ -22,7 +22,8 @@ Scannt über das Netzwerk (eSCL/AirScan, z. B. Epson-Multifunktionsgeräte) und 
 | Entität | Beschreibung |
 |---|---|
 | Buttons | Scan Flachbett / Einzug (einseitig) / Einzug (beidseitig), Stapel senden / verwerfen |
-| Sensor *Status* | `idle` (Bereit), `batch` (Stapel offen), `running` (Läuft), `done` (Fertig), `error` (Fehler); Attribut `detail` mit Klartext |
+| Sensor *Status* | `idle` (Bereit), `batch` (Stapel offen), `running` (Läuft), `done` (Fertig), `error` (Fehler); Attribute: `detail` (Klartext), `pages`, `batch_pages`, `source` (`platen`/`adf`/`adf_duplex`), `destination`, `document_id`, `blank_removed`, `finished_at` (des letzten Scans) |
+| Sensor *Letzter Scan* | Zeitpunkt, an dem der letzte Scan abgeschlossen wurde (bleibt nach einem Neustart erhalten) |
 | Sensor *Seiten* | Seiten des laufenden/letzten Jobs bzw. des offenen Stapels |
 | Sensor *Einzug* | `loaded`, `empty`, `processing` (während des Scans), `jam`, `cover_open`, `error` laut Drucker (`loaded`/`empty` kann nach Standby veraltet sein) |
 

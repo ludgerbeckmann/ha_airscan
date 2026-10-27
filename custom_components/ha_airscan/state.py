@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
@@ -20,6 +22,8 @@ class ScanTracker:
         self.detail = "Bereit"
         self.pages = 0
         self.batch: list[bytes] = []
+        self.last: dict = {}  # summary of the last finished scan
+        self.finished_at: datetime | None = None
         self.batch_dpi = 300
         self.timer: CALLBACK_TYPE | None = None
 

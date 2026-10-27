@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
+from homeassistant.components.sensor import (
+    RestoreSensor,
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -27,7 +32,7 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: AirscanConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     """Add sensors."""
-    entities: list[SensorEntity] = [JobStatusSensor(entry), PagesSensor(entry)]
+    entities: list[SensorEntity] = [JobStatusSensor(entry), PagesSensor(entry), LastScanSensor(entry)]
     caps = entry.runtime_data.capabilities
     if caps.adf_simplex or caps.adf_duplex:
         entities.append(FeederSensor(entry))
@@ -68,9 +73,14 @@ class JobStatusSensor(_TrackerSensor):
         return self._tracker.status
 
     @property
-    def extra_state_attributes(self) -> dict[str, str | int]:
-        """Detail text and batch size."""
-        return {"detail": self._tracker.detail, "batch_pages": len(self._tracker.batch)}
+    def extra_state_attributes(self) -> dict[str, str | int | None]:
+        """Detail text, page counter and the facts of the last finished scan."""
+        return {
+            "detail": self._tracker.detail,
+            "pages": self._tracker.pages,
+            "batch_pages": len(self._tracker.batch),
+            **self._tracker.last,
+        }
 
 
 class PagesSensor(_TrackerSensor):
@@ -86,6 +96,31 @@ class PagesSensor(_TrackerSensor):
     def native_value(self) -> int:
         """Page count."""
         return self._tracker.pages
+
+
+class LastScanSensor(_TrackerSensor, RestoreSensor):
+    """When the last scan finished; survives a Home Assistant restart."""
+
+    _attr_translation_key = "last_scan"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    def __init__(self, entry: AirscanConfigEntry) -> None:
+        super().__init__(entry, "last_scan")
+
+    async def async_added_to_hass(self) -> None:
+        """Restore the last value, then follow the tracker."""
+        await super().async_added_to_hass()
+        if (
+            self._tracker.finished_at is None
+            and (last := await self.async_get_last_sensor_data())
+            and last.native_value is not None
+        ):
+            self._tracker.finished_at = last.native_value
+
+    @property
+    def native_value(self):
+        """Time the last scan finished."""
+        return self._tracker.finished_at
 
 
 class FeederSensor(CoordinatorEntity, SensorEntity):

@@ -43,6 +43,7 @@ from .escl import (
 from .files import FileOutputError, write_atomic
 from .paperless import PaperlessError, PaperlessTaskFailed
 from .pdf import jpegs_to_pdf
+from .summary import summarize
 
 if TYPE_CHECKING:
     from . import AirscanConfigEntry, AirscanData
@@ -262,6 +263,8 @@ def _resolve(entry: AirscanConfigEntry, resolution: int | None, color_mode: str 
 def _finish(hass: HomeAssistant, entry: AirscanConfigEntry, result: dict) -> None:
     data = entry.runtime_data
     blank = result.get("blank_removed", 0)
+    data.tracker.finished_at = dt_util.utcnow()
+    data.tracker.last = summarize(result, data.tracker.finished_at)
     data.tracker.update(
         "done",
         f"{result['pages']} Seite(n) → {result['destination']}"
@@ -337,6 +340,7 @@ async def async_scan(
                 correspondent=correspondent, document_type=document_type, directory=directory,
             )
             result["blank_removed"] = removed
+            result["source"] = "adf_duplex" if duplex else source
         except (EsclError, HomeAssistantError) as err:
             raise _fail(data, err) from err
     _finish(hass, entry, result)
@@ -453,6 +457,7 @@ async def async_batch_send(
             _arm_stale_timer(hass, entry)  # batch is kept for another try
             raise error from err
         data.tracker.batch.clear()
+    result["source"] = "platen"
     _finish(hass, entry, result)
     return result
 

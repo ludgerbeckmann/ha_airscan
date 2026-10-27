@@ -115,6 +115,9 @@
           "cover_open": "Abdeckung offen",
           "error": "Fehler"
         }
+      },
+      "last_scan": {
+        "name": "Letzter Scan"
       }
     }
   },

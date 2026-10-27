@@ -115,6 +115,9 @@
           "cover_open": "Cover open",
           "error": "Error"
         }
+      },
+      "last_scan": {
+        "name": "Last scan"
       }
     }
   },
