@@ -91,7 +91,7 @@ cards:
 
   # Zusatzinfos (Details zum letzten Scan stehen auch als Attribute am Status-Sensor)
   - type: grid
-    columns: 2
+    columns: 3
     square: false
     cards:
       - type: tile
