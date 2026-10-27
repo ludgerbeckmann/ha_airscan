@@ -120,26 +120,38 @@ PAGE_SIZES: dict[str, tuple[int, int] | None] = {
 }
 
 
-def scan_region(src: SourceCaps, page_size: str) -> tuple[int, int, int, int]:
+# Slack added around the paper so a slightly skewed or oversized sheet keeps its edges.
+WIDTH_MARGIN = 15
+HEIGHT_MARGIN = 20
+
+
+def scan_region(
+    src: SourceCaps, page_size: str, align: str = "auto"
+) -> tuple[int, int, int, int]:
     """Return (width, height, x_offset, y_offset) for the requested paper size.
 
     Scanning the whole area of a Legal-sized feeder gives A4 pages with a white
-    strip at the bottom, so the region is cut to the paper size. The width is
-    only narrowed when the scanner tells where the sheet lies (otherwise a
-    centred sheet could lose its right edge); the sheet is assumed at the top.
+    strip at the bottom, so the region is cut to the paper size plus a small
+    margin. The width is only narrowed when we know where the sheet lies: either
+    the user said so (`align` = left/center/right) or the scanner reports it.
+    Otherwise the full width is kept, since a wrongly guessed side would clip
+    the sheet. The sheet is assumed at the top.
     """
-    target = PAGE_SIZES.get(page_size) or (src.max_width, src.max_height)
-    height = min(target[1], src.max_height)
+    size = PAGE_SIZES.get(page_size)
+    if size is None:  # "max": whole scan area, no cutting
+        return src.max_width, src.max_height, 0, 0
+    height = min(size[1] + HEIGHT_MARGIN, src.max_height)
     y_off = {"Center": (src.max_height - height) // 2, "Bottom": src.max_height - height}.get(
         src.y_align or "", 0
     )
-    if src.x_align in ("Left", "Center", "Right"):
-        width = min(target[0], src.max_width)
+    x_align = {"left": "Left", "center": "Center", "right": "Right"}.get(align, src.x_align)
+    if x_align in ("Left", "Center", "Right"):
+        width = min(size[0] + WIDTH_MARGIN, src.max_width)
         x_off = {
             "Left": 0,
             "Center": (src.max_width - width) // 2,
             "Right": src.max_width - width,
-        }[src.x_align]
+        }[x_align]
     else:
         width, x_off = src.max_width, 0
     return width, height, x_off, y_off

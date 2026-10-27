@@ -15,6 +15,7 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_BATCH_AUTO_SEND,
     CONF_BATCH_TIMEOUT,
+    CONF_ADF_ALIGN,
     CONF_BLANK_DETECTION,
     CONF_BLANK_THRESHOLD,
     CONF_COLOR_MODE,
@@ -23,6 +24,7 @@ from .const import (
     CONF_PAGE_SIZE,
     CONF_RESOLUTION,
     CONF_TAGS,
+    DEFAULT_ADF_ALIGN,
     DEFAULT_BATCH_TIMEOUT,
     DEFAULT_COLOR_MODE,
     DEFAULT_PAGE_SIZE,
@@ -129,10 +131,13 @@ async def _run_scan(
     color_mode: str,
     src_caps: SourceCaps,
     page_size: str = DEFAULT_PAGE_SIZE,
+    adf_align: str = DEFAULT_ADF_ALIGN,
 ) -> list[bytes]:
     """Scan with warm-up and up to SCAN_ATTEMPTS tries when no page arrives."""
     tracker = data.tracker
-    width, height, x_off, y_off = scan_region(src_caps, page_size)
+    width, height, x_off, y_off = scan_region(
+        src_caps, page_size, adf_align if source == "adf" else "auto"
+    )
     settings = build_scan_settings(
         source=source,
         duplex=duplex,
@@ -319,6 +324,7 @@ async def async_scan(
                 data, source=source, duplex=duplex, resolution=dpi, color_mode=color,
                 src_caps=src_caps,
                 page_size=page_size or entry.options.get(CONF_PAGE_SIZE, DEFAULT_PAGE_SIZE),
+                adf_align=entry.options.get(CONF_ADF_ALIGN, DEFAULT_ADF_ALIGN),
             )
             removed = 0
             if source == "adf" and (

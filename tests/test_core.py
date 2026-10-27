@@ -322,22 +322,29 @@ def test_blank_detection():
 
 
 def test_scan_region_cuts_legal_feeder_to_a4():
-    legal_feeder = escl.SourceCaps(max_width=2550, max_height=4200)  # as in the real PDF
-    # Alignment unknown: keep the full width (a centred sheet must not lose its edge), cut the height.
-    assert escl.scan_region(legal_feeder, "a4") == (2550, 3508, 0, 0)
-    assert escl.scan_region(legal_feeder, "legal") == (2550, 4200, 0, 0)
+    legal_feeder = escl.SourceCaps(max_width=2550, max_height=4200)  # real ET-3950 simplex feeder
+    # Alignment unknown: keep the full width (a wrongly guessed side would clip the sheet),
+    # cut the height to A4 plus a little slack.
+    assert escl.scan_region(legal_feeder, "a4") == (2550, 3528, 0, 0)
+    assert escl.scan_region(legal_feeder, "legal") == (2550, 4200, 0, 0)  # 4200 + slack is capped
     assert escl.scan_region(legal_feeder, "max") == (2550, 4200, 0, 0)
-    # Alignment known: narrow to the paper and place the region accordingly.
-    centred = escl.SourceCaps(max_width=2550, max_height=4200, x_align="Center", y_align="Top")
-    assert escl.scan_region(centred, "a4") == (2480, 3508, 35, 0)
-    right = escl.SourceCaps(max_width=2550, max_height=4200, x_align="Right")
-    assert escl.scan_region(right, "a4") == (2480, 3508, 70, 0)
-    # Never larger than the device can do.
-    small = escl.SourceCaps(max_width=2400, max_height=3000)
+    # The user says the sheet lies on the right (measured on the real scans):
+    # same crop as the working Paperless fix script: x 55..2550, A4 height + slack.
+    assert escl.scan_region(legal_feeder, "a4", "right") == (2495, 3528, 55, 0)
+    assert escl.scan_region(legal_feeder, "a4", "left") == (2495, 3528, 0, 0)
+    assert escl.scan_region(legal_feeder, "a4", "center") == (2495, 3528, 27, 0)
+    # Alignment reported by the scanner is used for "auto", an explicit choice wins.
+    reported = escl.SourceCaps(max_width=2550, max_height=4200, x_align="Right", y_align="Top")
+    assert escl.scan_region(reported, "a4") == (2495, 3528, 55, 0)
+    assert escl.scan_region(reported, "a4", "left") == (2495, 3528, 0, 0)
+    # The duplex feeder reports A4 height already; never larger than the device can do.
+    duplex = escl.SourceCaps(max_width=2550, max_height=3510)
+    assert escl.scan_region(duplex, "a4", "right") == (2495, 3510, 55, 0)
+    small = escl.SourceCaps(max_width=2400, max_height=3000, x_align="Right")
     assert escl.scan_region(small, "a4") == (2400, 3000, 0, 0)
     x = escl.build_scan_settings(source="adf", duplex=False, resolution=300, color_mode="color",
-                                 width=2480, height=3508, x_offset=35, y_offset=0)
-    assert "<pwg:XOffset>35</pwg:XOffset>" in x and "<pwg:Height>3508</pwg:Height>" in x
+                                 width=2495, height=3528, x_offset=55, y_offset=0)
+    assert "<pwg:XOffset>55</pwg:XOffset>" in x and "<pwg:Height>3528</pwg:Height>" in x
 
 
 def test_capabilities_alignment_is_parsed():
