@@ -12,6 +12,7 @@ cards:
     state_content:
       - state
       - detail
+      - last_changed
 
   # Fehler gut sichtbar
   - type: conditional
@@ -88,9 +89,9 @@ cards:
           target:
             entity_id: button.epson_et_3950_series_stapel_verwerfen
 
-  # Zusatzinfos
+  # Zusatzinfos (Details zum letzten Scan stehen auch als Attribute am Status-Sensor)
   - type: grid
-    columns: 2
+    columns: 3
     square: false
     cards:
       - type: tile
@@ -101,3 +102,7 @@ cards:
         entity: sensor.epson_et_3950_series_einzug
         name: Einzug
         icon: mdi:tray-full
+      - type: tile
+        entity: sensor.epson_et_3950_series_letzter_scan
+        name: Letzter Scan
+        icon: mdi:clock-check-outline

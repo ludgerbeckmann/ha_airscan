@@ -387,3 +387,17 @@ def test_paperless_task_status():
                 raise AssertionError("expected PaperlessTaskFailed")
 
     _run(go())
+
+
+def test_last_scan_summary():
+    from datetime import datetime, timezone
+    summary = _load("summary")
+    when = datetime(2026, 10, 27, 20, 0, 13, tzinfo=timezone.utc)
+    out = summary.summarize(
+        {"pages": 6, "source": "adf_duplex", "destination": "paperless", "document_id": 123, "blank_removed": 2, "task_id": "x"},
+        when,
+    )
+    assert out == {"source": "adf_duplex", "destination": "paperless", "document_id": 123,
+                   "blank_removed": 2, "finished_at": "2026-10-27T20:00:13+00:00"}
+    out = summary.summarize({"pages": 1, "source": "platen", "destination": "file"}, when)
+    assert out["document_id"] is None and out["blank_removed"] == 0
