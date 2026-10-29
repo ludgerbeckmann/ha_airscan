@@ -51,9 +51,21 @@ actions:
 
 Die Domain lautet `ha_airscan`. Releases entstehen automatisch: Ein Merge nach `main` mit neuer `version` in der `manifest.json` erzeugt Tag `vX.Y.Z` und GitHub-Release (`.github/workflows/release.yml`), HACS zeigt dann das Update.
 
-## Dashboard
+## Dashboard-Karte
 
-Eine fertige Kachel mit Status, Scan-Buttons, Stapelmodus und Einzugsanzeige liegt in [`examples/dashboard.yaml`](examples/dashboard.yaml). Dashboard bearbeiten → Karte hinzufügen → *Manuell* → Inhalt einfügen und `epson_et_3950_series` durch den eigenen Gerätenamen ersetzen. Es werden nur Standard-Karten verwendet.
+![Scanner-Karte in verschiedenen Zuständen](docs/card-preview.png)
+
+Die Integration bringt eine eigene Karte mit, die Home Assistant automatisch lädt (nach dem Update einmal den Browser neu laden). Karte hinzufügen → *AirScan* wählen, oder per YAML:
+
+```yaml
+type: custom:ha-airscan-card
+entity: sensor.epson_et_3950_series_status   # der Status-Sensor des Scanners
+```
+
+- Quelle wählen (Glas / Einzug), bei Bedarf *Beidseitig* und über das Zahnrad Auflösung, Farbe, Format und Leerseiten **für den nächsten Scan** (wird im Browser gemerkt, die Integrationsoptionen bleiben unverändert).
+- Zeigt Status, laufende Seitenzahl, Einzugsstatus, den Stapel mit Restzeit, das Ergebnis mit Link zu Paperless und Fehlermeldungen. Farben und Schrift folgen dem Theme.
+- Optional: `name` (Titel) und `config_entry` (bei mehreren Scannern).
+- Die Karte ruft nur die Services der Integration auf; ohne eigene Karte funktioniert weiterhin das Beispiel in [`examples/dashboard.yaml`](examples/dashboard.yaml) mit Standard-Karten.
 
 ## Paperless
 
