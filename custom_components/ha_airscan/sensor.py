@@ -93,6 +93,8 @@ class JobStatusSensor(_TrackerSensor):
         expires = self._tracker.batch_expires_at
         return {
             "detail": self._tracker.detail,
+            "printer_online": self._tracker.printer_online,
+            "printer_state": self._tracker.printer_state,
             "pages": self._tracker.pages,
             "batch_pages": len(self._tracker.batch),
             "batch_expires_at": expires.isoformat() if expires else None,

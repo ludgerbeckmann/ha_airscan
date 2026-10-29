@@ -10,6 +10,9 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from .const import DOMAIN
 
 STATUSES = ["idle", "batch", "running", "done", "queued", "error"]
+# The printer counts as offline after this many failed status polls in a row (30 s apart),
+# so a single slow answer does not raise an alarm.
+OFFLINE_AFTER_FAILURES = 2
 
 
 class ScanTracker:
@@ -25,6 +28,8 @@ class ScanTracker:
         self.last: dict = {}  # summary of the last finished scan
         self.finished_at: datetime | None = None
         self.batch_expires_at: datetime | None = None
+        self.printer_failures = 0           # consecutive failed status polls
+        self.printer_state: str | None = None   # eSCL state: Idle, Processing, Stopped, ...
         self.batch_dpi = 300
         self.timer: CALLBACK_TYPE | None = None
 
@@ -40,6 +45,11 @@ class ScanTracker:
         if pages is not None:
             self.pages = pages
         async_dispatcher_send(self._hass, self.signal)
+
+    @property
+    def printer_online(self) -> bool:
+        """False once the printer did not answer several status polls in a row."""
+        return self.printer_failures < OFFLINE_AFTER_FAILURES
 
     @callback
     def cancel_timer(self) -> None:

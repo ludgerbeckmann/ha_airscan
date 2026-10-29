@@ -19,7 +19,8 @@ const assert = require("assert");
     mount({ cap: "5 · Fehler", status: "error", ui: { source: "adf" }, feeder: "empty", attrs: { detail: "Scan fehlgeschlagen: Scanner refused the job (ADF empty or cover open?)" } });
     mount({ cap: "6 · Wartet auf Paperless", status: "queued", ui: { source: "adf", duplex: true }, attrs: { pages: 6, detail: "6 Seite(n) gescannt – Paperless nicht erreichbar" },
       queue: { count: 2, next: 4 * 60000, items: [{ title: "Scan 2026-10-29 21:10", last_error: "ClientConnectorError: Cannot connect to host paperless:8000" }] } });
-    mount({ cap: "7 · Dunkel (Stapel)", status: "batch", dark: true, attrs: { batch_pages: 3, batch_expires_at: iso(24 * 60000) } });
+    mount({ cap: "7 · Drucker offline", status: "idle", feeder: "unavailable", attrs: { printer_online: false, printer_state: null } });
+    mount({ cap: "8 · Dunkel (Stapel)", status: "batch", dark: true, attrs: { batch_pages: 3, batch_expires_at: iso(24 * 60000) } });
   });
   await page.screenshot({ path: process.argv[2] || "card.png", fullPage: true });
 
@@ -73,6 +74,18 @@ const assert = require("assert");
     const q0 = mount({ status: "idle" }, document.body);
     out.noQueueBanner = root(q0).querySelector(".banner.warn") === null;
 
+    const off = mount({ status: "idle", attrs: { printer_online: false } }, document.body);
+    out.offChip = root(off).querySelector(".chip").textContent;
+    out.offBanner = root(off).querySelector(".banner.err")?.textContent || "";
+    out.offScanEnabled = !root(off).querySelector('[data-act="scan"]').disabled;     // a scan is still attempted (printer may wake up)
+    const offRun = mount({ status: "running", attrs: { printer_online: false } }, document.body);
+    out.offRunBanner = root(offRun).querySelector(".banner.err") === null;           // no false alarm while scanning
+    out.offRunChip = root(offRun).querySelector(".chip").textContent;
+    const fault = mount({ status: "idle", attrs: { printer_state: "Stopped" } }, document.body);
+    out.fault = root(fault).querySelector(".banner.err")?.textContent || "";
+    const okc = mount({ status: "idle" }, document.body);
+    out.okNoBanner = root(okc).querySelector(".banner.err") === null;
+
     const x = document.createElement("ha-airscan-card"); x.setConfig({ entity: "sensor.nope" });
     x.hass = { language: "de", states: {}, entities: {} }; document.body.appendChild(x);
     out.missing = x.shadowRoot.querySelector(".missing")?.textContent;
@@ -93,6 +106,13 @@ const assert = require("assert");
   assert.strictEqual(result.toast, "Scanner is busy");
   assert.strictEqual(result.en, "Scan feeder");
   assert.ok(/nicht gefunden/.test(result.missing));
+  assert.strictEqual(result.offChip, "Offline");
+  assert.ok(/Drucker nicht erreichbar/.test(result.offBanner) && /Scan wird trotzdem versucht/.test(result.offBanner), result.offBanner);
+  assert.strictEqual(result.offScanEnabled, true);
+  assert.strictEqual(result.offRunBanner, true);
+  assert.strictEqual(result.offRunChip, "Läuft");
+  assert.ok(/Drucker meldet einen Fehler \(Stopped\)/.test(result.fault), result.fault);
+  assert.strictEqual(result.okNoBanner, true);
   assert.deepStrictEqual(result.queue, [["ha_airscan", "retry_queue", {}]]);
   assert.ok(/2 Scans warten auf Paperless/.test(result.queueText) && /Nächster Versuch in 4 min/.test(result.queueText) && /1 von Paperless abgelehnt/.test(result.queueText), result.queueText);
   assert.strictEqual(result.queueChip, "Wartet");
