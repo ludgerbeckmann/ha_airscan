@@ -129,7 +129,7 @@ class HaAirscanCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this._ui = { source: "platen", duplex: false, open: false, resolution: "default", color: "default", page: "default", blank: "default" };
+    this._ui = { source: "adf", duplex: false, open: false, resolution: "default", color: "default", page: "default", blank: "default" };
     this._sig = "";
     this._toast = "";
     this._tick = 0;
@@ -147,7 +147,7 @@ class HaAirscanCard extends HTMLElement {
   setConfig(config) {
     if (!config || !config.entity) throw new Error("entity (Status-Sensor des Scanners) fehlt");
     this._config = config;
-    this._key = `ha-airscan-card:${config.entity}`;
+    this._key = `ha-airscan-card:v2:${config.entity}`;
     try { Object.assign(this._ui, JSON.parse(localStorage.getItem(this._key) || "{}")); } catch (_) { /* no storage */ }
     this._ui.open = false;
     this._sig = "";
@@ -289,8 +289,8 @@ class HaAirscanCard extends HTMLElement {
     // source selector
     const feederKey = feeder ? (FEEDER_KEYS[feeder.state] || null) : null;
     const seg = (caps.platen && caps.adf) ? `<div class="seg">
-        <button data-act="src" data-v="platen" class="${source === "platen" ? "on" : ""}" ${running ? "disabled" : ""}>${esc(t.platen)}</button>
         <button data-act="src" data-v="adf" class="${source === "adf" ? "on" : ""}" ${running || locked ? "disabled" : ""} ${locked ? `title="${esc(t.batch_lock)}"` : ""}>${esc(t.adf)}${feederKey ? `<span class="dot ${esc(feeder.state)}"></span><small>${esc(t[feederKey])}</small>` : ""}</button>
+        <button data-act="src" data-v="platen" class="${source === "platen" ? "on" : ""}" ${running ? "disabled" : ""}>${esc(t.platen)}</button>
       </div>` : "";
 
     // middle part by status
