@@ -123,7 +123,7 @@ ha-card{color:var(--primary-text-color)}
 .missing{color:var(--error-color,#db4437);font-size:14px}
 `;
 
-const LOGO = `<svg viewBox="0 0 256 256" aria-hidden="true"><path d="M76 122h104l-12-70H88z" fill="#17541F"/><rect x="100" y="70" width="56" height="6" rx="3" fill="#CFE8D3"/><rect x="100" y="85" width="42" height="6" rx="3" fill="#CFE8D3"/><rect x="100" y="100" width="28" height="6" rx="3" fill="#CFE8D3"/><rect x="36" y="118" width="184" height="80" rx="18" fill="#1B2B4B"/><rect x="52" y="148" width="22" height="14" rx="7" fill="#0773BB"/><rect x="78" y="148" width="22" height="14" rx="7" fill="#29ACE2"/><rect x="104" y="148" width="22" height="14" rx="7" fill="#15A850"/><rect x="130" y="148" width="22" height="14" rx="7" fill="#FDDE0A"/><rect x="156" y="148" width="22" height="14" rx="7" fill="#ED078E"/><rect x="182" y="148" width="22" height="14" rx="7" fill="#EC2029"/></svg>`;
+const LOGO = `<svg viewBox="0 0 256 256" aria-hidden="true"><path d="M76 122h104l-12-70H88z" fill="#17541F"/><rect x="100" y="70" width="56" height="6" rx="3" fill="#CFE8D3"/><rect x="100" y="85" width="42" height="6" rx="3" fill="#CFE8D3"/><rect x="100" y="100" width="28" height="6" rx="3" fill="#CFE8D3"/><rect x="36" y="118" width="184" height="80" rx="18" fill="#0E0F12"/><rect x="52" y="148" width="22" height="14" rx="7" fill="#0773BB"/><rect x="78" y="148" width="22" height="14" rx="7" fill="#29ACE2"/><rect x="104" y="148" width="22" height="14" rx="7" fill="#15A850"/><rect x="130" y="148" width="22" height="14" rx="7" fill="#FDDE0A"/><rect x="156" y="148" width="22" height="14" rx="7" fill="#ED078E"/><rect x="182" y="148" width="22" height="14" rx="7" fill="#EC2029"/></svg>`;
 
 class HaAirscanCard extends HTMLElement {
   constructor() {
