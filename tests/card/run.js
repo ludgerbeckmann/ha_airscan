@@ -17,7 +17,9 @@ const assert = require("assert");
     mount({ cap: "3 · Stapel offen", status: "batch", attrs: { batch_pages: 3, batch_expires_at: iso(24 * 60000), detail: "Stapel: 3 Seite(n)" } });
     mount({ cap: "4 · Fertig", status: "done", ui: { source: "adf", duplex: true }, attrs: { pages: 6, destination: "paperless", document_id: 123, blank_removed: 2 }, last: iso(-2 * 60000) });
     mount({ cap: "5 · Fehler", status: "error", ui: { source: "adf" }, feeder: "empty", attrs: { detail: "Scan fehlgeschlagen: Scanner refused the job (ADF empty or cover open?)" } });
-    mount({ cap: "6 · Dunkel (Stapel)", status: "batch", dark: true, attrs: { batch_pages: 3, batch_expires_at: iso(24 * 60000) } });
+    mount({ cap: "6 · Wartet auf Paperless", status: "queued", ui: { source: "adf", duplex: true }, attrs: { pages: 6, detail: "6 Seite(n) gescannt – Paperless nicht erreichbar" },
+      queue: { count: 2, next: 4 * 60000, items: [{ title: "Scan 2026-10-29 21:10", last_error: "ClientConnectorError: Cannot connect to host paperless:8000" }] } });
+    mount({ cap: "7 · Dunkel (Stapel)", status: "batch", dark: true, attrs: { batch_pages: 3, batch_expires_at: iso(24 * 60000) } });
   });
   await page.screenshot({ path: process.argv[2] || "card.png", fullPage: true });
 
@@ -58,6 +60,14 @@ const assert = require("assert");
     const e = mount({ status: "idle", lang: "en" }, document.body);
     out.en = root(e).querySelector(".primary").textContent;
 
+    const q = mount({ status: "queued", queue: { count: 2, next: 240000, rejected: 1, items: [{ last_error: "boom" }] } }, document.body);
+    click(q, '[data-act="retry"]');
+    out.queue = q._hass.calls.slice();
+    out.queueText = root(q).querySelector(".banner.warn").textContent;
+    out.queueChip = root(q).querySelector(".chip").textContent;
+    const q0 = mount({ status: "idle" }, document.body);
+    out.noQueueBanner = root(q0).querySelector(".banner.warn") === null;
+
     const x = document.createElement("ha-airscan-card"); x.setConfig({ entity: "sensor.nope" });
     x.hass = { language: "de", states: {}, entities: {} }; document.body.appendChild(x);
     out.missing = x.shadowRoot.querySelector(".missing")?.textContent;
@@ -75,6 +85,10 @@ const assert = require("assert");
   assert.strictEqual(result.toast, "Scanner is busy");
   assert.strictEqual(result.en, "Scan page");
   assert.ok(/nicht gefunden/.test(result.missing));
+  assert.deepStrictEqual(result.queue, [["ha_airscan", "retry_queue", {}]]);
+  assert.ok(/2 Scans warten auf Paperless/.test(result.queueText) && /Nächster Versuch in 4 min/.test(result.queueText) && /1 von Paperless abgelehnt/.test(result.queueText), result.queueText);
+  assert.strictEqual(result.queueChip, "Wartet");
+  assert.strictEqual(result.noQueueBanner, true);
   assert.deepStrictEqual(errors, [], "console errors: " + errors.join("; "));
   console.log("card checks passed");
   await browser.close();

@@ -26,6 +26,12 @@ async def async_get_config_entry_diagnostics(
         "options": async_redact_data(dict(entry.options), TO_REDACT),
         "capabilities": async_redact_data(asdict(data.capabilities), TO_REDACT),
         "scanner_status": asdict(status) if status else None,
+        "queue": {
+            "pending": len(data.outbox.pending),
+            "rejected": len(data.outbox.rejected),
+            "attempts": [i.get("attempts") for i in data.outbox.items],
+            "errors": [i.get("last_error") for i in data.outbox.items],
+        },
         "job": {
             "status": data.tracker.status,
             "detail": data.tracker.detail,

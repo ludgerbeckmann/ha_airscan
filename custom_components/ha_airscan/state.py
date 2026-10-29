@@ -9,7 +9,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .const import DOMAIN
 
-STATUSES = ["idle", "batch", "running", "done", "error"]
+STATUSES = ["idle", "batch", "running", "done", "queued", "error"]
 
 
 class ScanTracker:

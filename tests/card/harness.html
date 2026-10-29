@@ -16,7 +16,7 @@ function fakeHass(o) {
   const dev = "d1";
   const ent = (id, tk, platform = "ha_airscan") => [id, { entity_id: id, device_id: dev, platform, translation_key: tk }];
   const entities = Object.fromEntries([
-    ent("sensor.epson_status", "status"), ent("sensor.epson_seiten", "pages"), ent("sensor.epson_letzter_scan", "last_scan"), ent("sensor.epson_einzug", "feeder"),
+    ent("sensor.epson_status", "status"), ent("sensor.epson_seiten", "pages"), ent("sensor.epson_letzter_scan", "last_scan"), ent("sensor.epson_einzug", "feeder"), ent("sensor.epson_warteschlange", "queue"),
     ent("button.epson_scan_flachbett", "scan_platen"), ent("button.epson_scan_einzug_einseitig", "scan_adf_simplex"), ent("button.epson_scan_einzug_beidseitig", "scan_adf_duplex"),
     ent("button.epson_stapel_senden", "batch_send"), ent("button.epson_stapel_verwerfen", "batch_discard"),
   ]);
@@ -26,6 +26,9 @@ function fakeHass(o) {
     "sensor.epson_status": { state: o.status, attributes: attrs },
     "sensor.epson_einzug": { state: o.feeder || "loaded", attributes: {} },
     "sensor.epson_letzter_scan": { state: o.last || iso(-10 * 60000), attributes: {} },
+    "sensor.epson_warteschlange": { state: String((o.queue && o.queue.count) || 0),
+      attributes: { next_retry: o.queue && o.queue.next ? iso(o.queue.next) : null, rejected: (o.queue && o.queue.rejected) || 0,
+        items: (o.queue && o.queue.items) || [] } },
   };
   const calls = [];
   return { language: o.lang || "de", states, entities, devices: { d1: { name: "EPSON ET-3950 Series" } }, calls,

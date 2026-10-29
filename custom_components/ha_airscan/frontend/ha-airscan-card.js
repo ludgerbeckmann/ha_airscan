@@ -1,4 +1,4 @@
-/* AirScan card for Home Assistant. Served and registered by the ha_airscan integration.
+/* Scan to Paperless card for Home Assistant. Served and registered by the ha_airscan integration.
  *
  *   type: custom:ha-airscan-card
  *   entity: sensor.<scanner>_status      # the "Status" sensor of the scanner
@@ -11,7 +11,7 @@ const CARD_VERSION = "0.8.0";
 
 const T = {
   de: {
-    ready: "Bereit", running: "Läuft", batch: "Stapel", done: "Fertig", error: "Fehler", unavailable: "Nicht verfügbar",
+    ready: "Bereit", running: "Läuft", batch: "Stapel", done: "Fertig", queued: "Wartet", error: "Fehler", unavailable: "Nicht verfügbar",
     platen: "Glas", adf: "Einzug", loaded: "Geladen", empty: "Leer", processing: "Arbeitet", jam: "Papierstau",
     cover_open: "Abdeckung offen", feeder_error: "Fehler",
     duplex: "Beidseitig", duplex_lc: "beidseitig", scan_glass: "Seite scannen", scan_adf: "Einzug scannen", scan_adf_duplex: "Einzug scannen · beidseitig",
@@ -25,10 +25,12 @@ const T = {
     failed: "Scan fehlgeschlagen", settings: "Einstellungen für den nächsten Scan", resolution: "Auflösung", color: "Farbe",
     gray: "Graustufen", paper: "Format", blank: "Leerseiten", blank_default: "Standard", on: "An", off: "Aus",
     default: "Standard", max: "Volle Fläche", batch_lock: "Erst den Stapel senden oder verwerfen",
+    queue_title: (n) => `${n} ${n === 1 ? "Scan wartet" : "Scans warten"} auf Paperless`, queue_hint: "Gespeichert, wird automatisch erneut gesendet.",
+    queue_retry: "Jetzt senden", queue_next: (m) => `Nächster Versuch in ${m} min`, queue_rejected: (n) => `${n} von Paperless abgelehnt (Datei bleibt im Ordner ha_airscan_outbox)`,
     missing: "Entität nicht gefunden – bitte den Status-Sensor des Scanners angeben.",
   },
   en: {
-    ready: "Ready", running: "Running", batch: "Batch", done: "Done", error: "Error", unavailable: "Unavailable",
+    ready: "Ready", running: "Running", batch: "Batch", done: "Done", queued: "Waiting", error: "Error", unavailable: "Unavailable",
     platen: "Glass", adf: "Feeder", loaded: "Loaded", empty: "Empty", processing: "Busy", jam: "Jam",
     cover_open: "Cover open", feeder_error: "Error",
     duplex: "Two-sided", duplex_lc: "two-sided", scan_glass: "Scan page", scan_adf: "Scan feeder", scan_adf_duplex: "Scan feeder · two-sided",
@@ -42,6 +44,8 @@ const T = {
     failed: "Scan failed", settings: "Settings for the next scan", resolution: "Resolution", color: "Color",
     gray: "Grayscale", paper: "Format", blank: "Blank pages", blank_default: "Default", on: "On", off: "Off",
     default: "Default", max: "Full area", batch_lock: "Send or discard the batch first",
+    queue_title: (n) => `${n} ${n === 1 ? "scan is" : "scans are"} waiting for Paperless`, queue_hint: "Saved, will be sent again automatically.",
+    queue_retry: "Send now", queue_next: (m) => `Next attempt in ${m} min`, queue_rejected: (n) => `${n} refused by Paperless (file stays in the ha_airscan_outbox folder)`,
     missing: "Entity not found – please select the scanner's status sensor.",
   },
 };
@@ -49,7 +53,7 @@ const T = {
 const PAGE_SIZES = ["a4", "a5", "letter", "legal", "max"];
 const RESOLUTIONS = [100, 200, 300, 600];
 const FEEDER_KEYS = { loaded: "loaded", empty: "empty", processing: "processing", jam: "jam", cover_open: "cover_open", error: "feeder_error" };
-const STATUS_KEYS = { idle: "ready", batch: "batch", running: "running", done: "done", error: "error" };
+const STATUS_KEYS = { idle: "ready", batch: "batch", running: "running", done: "done", queued: "queued", error: "error" };
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -66,7 +70,7 @@ ha-card{color:var(--primary-text-color)}
 .chip{flex:none;font-size:12px;font-weight:600;padding:5px 11px;border-radius:99px;white-space:nowrap}
 .chip.ready,.chip.done{background:color-mix(in srgb,var(--success-color,#15a850) 18%,transparent);color:var(--success-color,#15a850)}
 .chip.running{background:color-mix(in srgb,var(--primary-color) 16%,transparent);color:var(--primary-color)}
-.chip.batch{background:color-mix(in srgb,var(--warning-color,#ffa600) 22%,transparent);color:var(--warning-color,#b97700)}
+.chip.batch,.chip.queued{background:color-mix(in srgb,var(--warning-color,#ffa600) 22%,transparent);color:var(--warning-color,#b97700)}
 .chip.error,.chip.unavailable{background:color-mix(in srgb,var(--error-color,#db4437) 16%,transparent);color:var(--error-color,#db4437)}
 .beam{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;height:6px}
 .beam i{border-radius:4px;opacity:.28;background:var(--c)}
@@ -112,12 +116,14 @@ ha-card{color:var(--primary-text-color)}
 .banner b{font-size:14.5px}.banner span{font-size:12.5px;word-break:break-word}
 .banner a{font-size:13px;font-weight:600;margin-top:4px;color:inherit}
 .banner.ok{background:color-mix(in srgb,var(--success-color,#15a850) 16%,transparent);color:var(--success-color,#0e7a3a)}
+.banner.warn{background:color-mix(in srgb,var(--warning-color,#ffa600) 20%,transparent);color:var(--warning-color,#8a5a00)}
+.banner .retry{align-self:flex-start;margin-top:6px;border:1.5px solid currentColor;background:transparent;color:inherit;border-radius:8px;font:inherit;font-weight:600;font-size:13px;padding:6px 12px;cursor:pointer}
 .banner.err{background:color-mix(in srgb,var(--error-color,#db4437) 14%,transparent);color:var(--error-color,#b3141b)}
 .toast{font-size:12.5px;color:var(--error-color,#db4437)}
 .missing{color:var(--error-color,#db4437);font-size:14px}
 `;
 
-const LOGO = `<svg viewBox="0 0 256 256" aria-hidden="true"><path d="M76 122h104l-12-70H88z" fill="#fff" stroke="#c9d3e0" stroke-width="3"/><rect x="100" y="70" width="56" height="6" rx="3" fill="#0773BB"/><rect x="100" y="85" width="42" height="6" rx="3" fill="#0773BB"/><rect x="100" y="100" width="28" height="6" rx="3" fill="#0773BB"/><rect x="36" y="118" width="184" height="80" rx="18" fill="#1B2B4B"/><rect x="52" y="148" width="22" height="14" rx="7" fill="#0773BB"/><rect x="78" y="148" width="22" height="14" rx="7" fill="#29ACE2"/><rect x="104" y="148" width="22" height="14" rx="7" fill="#15A850"/><rect x="130" y="148" width="22" height="14" rx="7" fill="#FDDE0A"/><rect x="156" y="148" width="22" height="14" rx="7" fill="#ED078E"/><rect x="182" y="148" width="22" height="14" rx="7" fill="#EC2029"/></svg>`;
+const LOGO = `<svg viewBox="0 0 256 256" aria-hidden="true"><rect x="98" y="28" width="60" height="44" rx="5" fill="#fff" stroke="#c9d3e0" stroke-width="3"/><rect x="107" y="40" width="42" height="5" rx="2.5" fill="#0773BB"/><rect x="50" y="62" width="156" height="56" rx="14" fill="#1B2B4B"/><rect x="66" y="84" width="17" height="12" rx="6" fill="#0773BB"/><rect x="86" y="84" width="17" height="12" rx="6" fill="#29ACE2"/><rect x="106" y="84" width="17" height="12" rx="6" fill="#15A850"/><rect x="126" y="84" width="17" height="12" rx="6" fill="#FDDE0A"/><rect x="146" y="84" width="17" height="12" rx="6" fill="#ED078E"/><rect x="166" y="84" width="17" height="12" rx="6" fill="#EC2029"/><path d="M112 128h32v20h18l-34 28-34-28h18z" fill="#0773BB"/><rect x="104" y="178" width="74" height="46" rx="5" fill="#fff" stroke="#c9d3e0" stroke-width="3"/><rect x="91" y="185" width="74" height="46" rx="5" fill="#fff" stroke="#c9d3e0" stroke-width="3"/><rect x="78" y="192" width="74" height="46" rx="5" fill="#fff" stroke="#c9d3e0" stroke-width="3"/><rect x="87" y="204" width="50" height="5" rx="2.5" fill="#0773BB"/><rect x="87" y="215" width="38" height="5" rx="2.5" fill="#0773BB"/></svg>`;
 
 class HaAirscanCard extends HTMLElement {
   constructor() {
@@ -218,6 +224,7 @@ class HaAirscanCard extends HTMLElement {
     else if (act === "add") this._call("batch_add", this._overrides(true));
     else if (act === "send") this._call("batch_send");
     else if (act === "discard") this._call("batch_discard");
+    else if (act === "retry") this._call("retry_queue");
   }
 
   _onChange(e) {
@@ -234,14 +241,15 @@ class HaAirscanCard extends HTMLElement {
     const get = (k) => (sib[k] ? this._hass.states[sib[k]] : undefined);
     const feeder = get("feeder");
     const last = get("last_scan");
+    const queue = get("queue");
     const a = st ? st.attributes : {};
-    const sig = JSON.stringify([st && st.state, a, feeder && feeder.state, last && last.state, this._ui, this._toast, this._tick, this._hass.language]);
+    const sig = JSON.stringify([st && st.state, a, feeder && feeder.state, last && last.state, queue && [queue.state, queue.attributes.next_retry, queue.attributes.rejected], this._ui, this._toast, this._tick, this._hass.language]);
     if (sig === this._sig) return;
     this._sig = sig;
-    this._render(st, a, sib, feeder, last);
+    this._render(st, a, sib, feeder, last, queue);
   }
 
-  _render(st, a, sib, feeder, last) {
+  _render(st, a, sib, feeder, last, queue) {
     const t = this._t;
     const root = this.shadowRoot;
     if (!st) { root.innerHTML = `<style>${STYLE}</style><ha-card><div class="body"><div class="missing">${esc(t.missing)}</div></div></ha-card>`; return; }
@@ -299,8 +307,20 @@ class HaAirscanCard extends HTMLElement {
       const link = a.paperless_url && a.document_id && a.destination === "paperless"
         ? `<a href="${esc(String(a.paperless_url).replace(/\/+$/, ""))}/documents/${esc(a.document_id)}/details" target="_blank" rel="noopener">${esc(t.open_paperless)}</a>` : "";
       banner = `<div class="banner ok"><b>${esc(where)}</b>${bits ? `<span>${esc(bits)}</span>` : ""}${link}</div>`;
+    } else if (status === "queued") {
+      banner = "";   // the queue box below explains it
     } else if (status === "error") {
       banner = `<div class="banner err"><b>${esc(t.failed)}</b><span>${esc(String(a.detail || "").replace(/^Scan fehlgeschlagen:\s*/i, ""))}</span></div>`;
+    }
+
+    // scans waiting for Paperless (stored on disk, retried automatically)
+    const waiting = queue && !["unknown", "unavailable"].includes(queue.state) ? Number(queue.state) : 0;
+    const refused = queue ? Number(queue.attributes.rejected || 0) : 0;
+    let queueBox = "";
+    if (waiting > 0 || refused > 0) {
+      const next = queue.attributes.next_retry ? Math.ceil((new Date(queue.attributes.next_retry).getTime() - Date.now()) / 60000) : null;
+      const lastError = (queue.attributes.items || []).map((i) => i.last_error).filter(Boolean).pop() || "";
+      queueBox = `<div class="banner warn">${waiting > 0 ? `<b>${esc(t.queue_title(waiting))}</b><span>${esc(t.queue_hint)}${next && next > 0 ? " " + esc(t.queue_next(next)) : ""}</span>${lastError ? `<span>${esc(lastError)}</span>` : ""}` : ""}${refused > 0 ? `<span>${esc(t.queue_rejected(refused))}</span>` : ""}${waiting > 0 ? `<button class="retry" data-act="retry">${esc(t.queue_retry)}</button>` : ""}</div>`;
     }
 
     // options row + settings panel (not while running or while a batch is open)
@@ -345,7 +365,7 @@ class HaAirscanCard extends HTMLElement {
     root.innerHTML = `<style>${STYLE}</style><ha-card><div class="body">
       <div class="head"><div class="logo">${LOGO}</div><div class="t"><div class="name">${esc(name)}</div><div class="sub">${esc(sub)}</div></div><span class="chip ${chipCls}">${esc(t[chipKey])}</span></div>
       <div class="beam ${beam}"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-      ${seg}${middle}${banner}${opts}${panel}${actions}
+      ${seg}${middle}${banner}${queueBox}${opts}${panel}${actions}
       ${this._toast ? `<div class="toast">${esc(this._toast)}</div>` : ""}
     </div></ha-card>`;
   }
@@ -354,6 +374,6 @@ class HaAirscanCard extends HTMLElement {
 if (!customElements.get("ha-airscan-card")) customElements.define("ha-airscan-card", HaAirscanCard);
 window.customCards = window.customCards || [];
 if (!window.customCards.some((c) => c.type === "ha-airscan-card")) {
-  window.customCards.push({ type: "ha-airscan-card", name: "AirScan", description: "Scan to Paperless: glass, feeder, duplex and batch.", preview: false });
+  window.customCards.push({ type: "ha-airscan-card", name: "Scan to Paperless", description: "Scan via eSCL (glass, feeder, duplex, batch) and send to Paperless-ngx.", preview: false });
 }
 console.info(`%c AIRSCAN-CARD %c ${CARD_VERSION} `, "background:#0773BB;color:#fff;border-radius:3px 0 0 3px", "background:#eee;color:#333;border-radius:0 3px 3px 0");

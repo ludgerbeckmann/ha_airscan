@@ -14,6 +14,7 @@ from homeassistant.helpers import entity_registry as er
 
 from . import AirscanConfigEntry
 from .const import DOMAIN
+from .delivery import async_retry_queue
 from .scan import async_batch_add, async_batch_discard, async_batch_send, async_scan
 
 
@@ -21,7 +22,7 @@ from .scan import async_batch_add, async_batch_discard, async_batch_send, async_
 class AirscanButtonDescription(ButtonEntityDescription):
     """One button: which capability it needs and what it runs."""
 
-    needs: str  # attribute of Capabilities
+    needs: str | None  # attribute of Capabilities, None = always available
     action: Callable[[HomeAssistant, AirscanConfigEntry], Awaitable]
 
 
@@ -46,6 +47,10 @@ BUTTONS = (
         key="batch_discard", translation_key="batch_discard", needs="platen",
         action=lambda h, e: async_batch_discard(h, e),
     ),
+    AirscanButtonDescription(
+        key="retry_queue", translation_key="retry_queue", needs=None,
+        action=lambda h, e: async_retry_queue(h, e),
+    ),
 )
 
 
@@ -59,7 +64,7 @@ async def async_setup_entry(
     if old := registry.async_get_entity_id("button", DOMAIN, f"{entry.unique_id}_batch_add"):
         registry.async_remove(old)
     async_add_entities(
-        AirscanButton(entry, d) for d in BUTTONS if getattr(caps, d.needs) is not None
+        AirscanButton(entry, d) for d in BUTTONS if d.needs is None or getattr(caps, d.needs) is not None
     )
 
 

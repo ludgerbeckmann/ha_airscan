@@ -1,6 +1,6 @@
-# AirScan (eSCL) – Home Assistant Integration
+# Scan to Paperless – Home Assistant Integration
 
-Scannt über das Netzwerk (eSCL/AirScan, z. B. Epson-Multifunktionsgeräte) und legt das Ergebnis standardmäßig als PDF in **Paperless-ngx** ab.
+Scannt über das Netzwerk (eSCL/AirScan, z. B. Epson-Multifunktionsgeräte) und legt das Ergebnis als PDF in **Paperless-ngx** ab. Unabhängig vom Projekt Paperless-ngx; der Name beschreibt nur, wohin gescannt wird.
 
 - Flachbett, Dokumenteneinzug (ADF) einseitig und beidseitig (Duplex)
 - Mehrseitige ADF-Scans werden zu **einem** PDF zusammengefasst (JPEG ohne Neukodierung, A4 nach Scanfläche)
@@ -16,6 +16,7 @@ Scannt über das Netzwerk (eSCL/AirScan, z. B. Epson-Multifunktionsgeräte) und 
 - **Papierformat** (Option, Standard A4; A5, Letter, Legal oder volle Scanfläche): Der Scanbereich wird auf das Format begrenzt. Ohne das scannt ein Legal-Einzug (z. B. Epson) A4-Blätter mit weißem Streifen unten.
 - **Papierlage im Einzug** (Option: automatisch, links, Mitte, rechts): Liegt das Papier im Einzug an einer Seite an (beim Epson ET-3950 rechts), schneidet die Integration auch die Breite zu und lässt 15 Pixel Spielraum. Bei „automatisch“ wird die Ausrichtung des Scanners verwendet; meldet er keine, bleibt die volle Breite erhalten.
 - **Status „Fertig“ heißt: Paperless hat das Dokument tatsächlich verarbeitet.** Nach dem Upload fragt die Integration die Paperless-Aufgabe ab (bis 2 Minuten). Lehnt Paperless ab (z. B. Duplikat), wird der Status `error` mit dem Grund aus Paperless. Dauert die Verarbeitung länger, bleibt es `done` mit dem Hinweis „Paperless verarbeitet noch“. Ein Token ohne Zugriff auf die Aufgabenliste funktioniert weiter, dann gilt der Upload als Erfolg.
+- **Warteschlange bei Paperless-Ausfall:** Ist Paperless nicht erreichbar (oder der Token ungültig), geht der Scan **nicht verloren**: Das PDF wird im Ordner `config/ha_airscan_outbox/` gespeichert und automatisch mit wachsenden Abständen (1, 2, 5, 10, 15 min) erneut gesendet, auch nach einem Neustart von Home Assistant. Status `queued` („Wartet auf Paperless“), Sensor *Warteschlange* mit Anzahl und Fehlergrund, Knopf bzw. Service `ha_airscan.retry_queue` zum sofortigen Senden, Event `ha_airscan_queue_delivered`. Meldet Paperless beim erneuten Senden ein Duplikat (der erste Versuch kam doch an), gilt das als zugestellt. Lehnt Paperless ein Dokument endgültig ab, bleibt die Datei zur manuellen Bearbeitung im Ordner liegen und wird nicht weiter versucht.
 - Dateiname `scan-YYYYMMDD-HHMMSS.pdf`
 
 ## Entitäten
@@ -23,12 +24,13 @@ Scannt über das Netzwerk (eSCL/AirScan, z. B. Epson-Multifunktionsgeräte) und 
 | Entität | Beschreibung |
 |---|---|
 | Buttons | Scan Flachbett / Einzug (einseitig) / Einzug (beidseitig), Stapel senden / verwerfen |
-| Sensor *Status* | `idle` (Bereit), `batch` (Stapel offen), `running` (Läuft), `done` (Fertig), `error` (Fehler); Attribute: `detail` (Klartext), `pages`, `batch_pages`, `source` (`platen`/`adf`/`adf_duplex`), `destination`, `document_id`, `blank_removed`, `finished_at` (des letzten Scans) |
+| Sensor *Status* | `idle` (Bereit), `batch` (Stapel offen), `running` (Läuft), `done` (Fertig), `queued` (Wartet auf Paperless), `error` (Fehler); Attribute: `detail` (Klartext), `pages`, `batch_pages`, `source` (`platen`/`adf`/`adf_duplex`), `destination`, `document_id`, `blank_removed`, `finished_at` (des letzten Scans) |
 | Sensor *Letzter Scan* | Zeitpunkt, an dem der letzte Scan abgeschlossen wurde (bleibt nach einem Neustart erhalten) |
+| Sensor *Warteschlange* | Anzahl der Scans, die auf Paperless warten (Attribute: Fehlergrund, nächster Versuch) |
 | Sensor *Seiten* | Seiten des laufenden/letzten Jobs bzw. des offenen Stapels |
 | Sensor *Einzug* | `loaded`, `empty`, `processing` (während des Scans), `jam`, `cover_open`, `error` laut Drucker (`loaded`/`empty` kann nach Standby veraltet sein) |
 
-Services: `ha_airscan.scan`, `ha_airscan.batch_add`, `ha_airscan.batch_send`, `ha_airscan.batch_discard`. Events: `ha_airscan_scan_finished`, `ha_airscan_batch_stale`.
+Services: `ha_airscan.scan`, `ha_airscan.batch_add`, `ha_airscan.batch_send`, `ha_airscan.batch_discard`, `ha_airscan.retry_queue`. Events: `ha_airscan_scan_finished`, `ha_airscan_batch_stale`, `ha_airscan_queue_delivered`.
 
 Fehler-Benachrichtigung per Automation auf den Statussensor:
 
@@ -45,7 +47,7 @@ actions:
 
 ## Installation
 
-**HACS (empfohlen):** HACS → ⋮ → *Benutzerdefinierte Repositories* → `https://github.com/ludgerbeckmann/ha_airscan`, Kategorie *Integration* → herunterladen → Home Assistant neu starten → *Einstellungen → Geräte & Dienste → Integration hinzufügen → „AirScan (eSCL) Scanner“*.
+**HACS (empfohlen):** HACS → ⋮ → *Benutzerdefinierte Repositories* → `https://github.com/ludgerbeckmann/ha_airscan`, Kategorie *Integration* → herunterladen → Home Assistant neu starten → *Einstellungen → Geräte & Dienste → Integration hinzufügen → „Scan to Paperless“*.
 
 **Manuell:** `custom_components/ha_airscan` nach `config/custom_components/` kopieren und neu starten.
 
@@ -55,7 +57,7 @@ Die Domain lautet `ha_airscan`. Releases entstehen automatisch: Ein Merge nach `
 
 ![Scanner-Karte in verschiedenen Zuständen](docs/card-preview.png)
 
-Die Integration bringt eine eigene Karte mit, die Home Assistant automatisch lädt (nach dem Update einmal den Browser neu laden). Karte hinzufügen → *AirScan* wählen, oder per YAML:
+Die Integration bringt eine eigene Karte mit, die Home Assistant automatisch lädt (nach dem Update einmal den Browser neu laden). Karte hinzufügen → *Scan to Paperless* wählen, oder per YAML:
 
 ```yaml
 type: custom:ha-airscan-card

@@ -114,3 +114,10 @@ batch_discard:
       selector:
         config_entry:
           integration: ha_airscan
+
+retry_queue:
+  fields:
+    config_entry:
+      selector:
+        config_entry:
+          integration: ha_airscan

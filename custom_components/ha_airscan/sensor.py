@@ -45,7 +45,7 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: AirscanConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     """Add sensors."""
-    entities: list[SensorEntity] = [JobStatusSensor(entry), PagesSensor(entry), LastScanSensor(entry)]
+    entities: list[SensorEntity] = [JobStatusSensor(entry), PagesSensor(entry), LastScanSensor(entry), QueueSensor(entry)]
     caps = entry.runtime_data.capabilities
     if caps.adf_simplex or caps.adf_duplex:
         entities.append(FeederSensor(entry))
@@ -123,6 +123,36 @@ class PagesSensor(_TrackerSensor):
     def native_value(self) -> int:
         """Page count."""
         return self._tracker.pages
+
+
+class QueueSensor(_TrackerSensor):
+    """Scans waiting for Paperless (stored on disk, retried automatically)."""
+
+    _attr_translation_key = "queue"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, entry: AirscanConfigEntry) -> None:
+        super().__init__(entry, "queue")
+        self._outbox = entry.runtime_data.outbox
+
+    @property
+    def native_value(self) -> int:
+        """Number of scans that will be retried."""
+        return len(self._outbox.pending)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """What is waiting and why; refused documents stay on disk."""
+        retry = self._outbox.next_retry
+        return {
+            "next_retry": retry.isoformat() if retry else None,
+            "rejected": len(self._outbox.rejected),
+            "items": [
+                {"title": i.get("title"), "created": i.get("created"), "attempts": i.get("attempts"),
+                 "last_error": i.get("last_error"), "rejected": i.get("rejected", False)}
+                for i in self._outbox.items
+            ],
+        }
 
 
 class LastScanSensor(_TrackerSensor, RestoreSensor):
