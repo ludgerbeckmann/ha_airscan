@@ -36,11 +36,13 @@ from .const import (
     SERVICE_BATCH_ADD,
     SERVICE_BATCH_DISCARD,
     SERVICE_BATCH_SEND,
+    SERVICE_RETRY_QUEUE,
     SERVICE_SCAN,
     SOURCES,
 )
 from .escl import Capabilities, EsclClient, EsclError, Status
 from .paperless import PaperlessClient
+from .delivery import STARTUP_DELAY, Outbox, async_retry_queue
 from .scan import async_batch_add, async_batch_discard, async_batch_send, async_scan
 from .state import ScanTracker
 
@@ -72,6 +74,7 @@ class AirscanData:
     coordinator: DataUpdateCoordinator[Status]
     lock: asyncio.Lock
     tracker: ScanTracker
+    outbox: Outbox
 
 
 type AirscanConfigEntry = ConfigEntry[AirscanData]
@@ -146,9 +149,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirscanConfigEntry) -> b
             entry.options[CONF_PAPERLESS_TOKEN],
         )
 
-    entry.runtime_data = AirscanData(
-        client, capabilities, paperless, coordinator, asyncio.Lock(), ScanTracker(hass, entry.entry_id)
-    )
+    tracker = ScanTracker(hass, entry.entry_id)
+    outbox = Outbox(hass, Path(hass.config.path("ha_airscan_outbox", entry.entry_id)), tracker.update)
+    await outbox.async_load()
+    data = AirscanData(client, capabilities, paperless, coordinator, asyncio.Lock(), tracker, outbox)
+    outbox.data = data
+    entry.runtime_data = data
+    if outbox.pending:   # scans from before the restart are still waiting
+        tracker.update("queued", f"{len(outbox.pending)} Scan(s) warten auf Paperless")
+        outbox.async_schedule(STARTUP_DELAY)
     entry.async_on_unload(entry.add_update_listener(_reload))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -182,6 +191,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirscanConfigEntry) -> b
         _register(SERVICE_BATCH_ADD, async_batch_add, BATCH_ADD_SCHEMA, True)
         _register(SERVICE_BATCH_SEND, async_batch_send, BATCH_SEND_SCHEMA, True)
         _register(SERVICE_BATCH_DISCARD, async_batch_discard, BATCH_DISCARD_SCHEMA)
+        _register(SERVICE_RETRY_QUEUE, async_retry_queue, BATCH_DISCARD_SCHEMA, True)
     return True
 
 
@@ -192,11 +202,12 @@ async def _reload(hass: HomeAssistant, entry: AirscanConfigEntry) -> None:
 async def async_unload_entry(hass: HomeAssistant, entry: AirscanConfigEntry) -> bool:
     """Unload a scanner."""
     entry.runtime_data.tracker.cancel_timer()
+    entry.runtime_data.outbox.async_cancel()
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded and not any(
         e.entry_id != entry.entry_id and e.state.value == "loaded"
         for e in hass.config_entries.async_entries(DOMAIN)
     ):
-        for service in (SERVICE_SCAN, SERVICE_BATCH_ADD, SERVICE_BATCH_SEND, SERVICE_BATCH_DISCARD):
+        for service in (SERVICE_SCAN, SERVICE_BATCH_ADD, SERVICE_BATCH_SEND, SERVICE_BATCH_DISCARD, SERVICE_RETRY_QUEUE):
             hass.services.async_remove(DOMAIN, service)
     return unloaded

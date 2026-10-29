@@ -7,11 +7,28 @@ from aiohttp import ClientTimeout
 
 
 class PaperlessError(Exception):
-    """Generic Paperless error."""
+    """Generic Paperless error.
+
+    `status` is the HTTP status when Paperless answered, None for connection problems.
+    """
+
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
+
+    @property
+    def retryable(self) -> bool:
+        """Worth trying again later (outage, overload, wrong/expired token that can be fixed)."""
+        return self.status is None or self.status in (401, 403, 408, 429) or self.status >= 500
 
 
 class PaperlessTaskFailed(PaperlessError):
     """Paperless accepted the upload but failed to ingest the document."""
+
+    @property
+    def retryable(self) -> bool:
+        """Paperless decided; sending the same file again will not help."""
+        return False
 
 
 class PaperlessAuthError(PaperlessError):
@@ -38,10 +55,11 @@ class PaperlessClient:
                 timeout=ClientTimeout(total=15),
             ) as resp:
                 if resp.status in (401, 403):
-                    raise PaperlessAuthError("Invalid token")
+                    raise PaperlessAuthError("Invalid token", resp.status)
                 if resp.status != 200:
                     raise PaperlessError(
-                        f"HTTP {resp.status} von {self._url}/api/documents/ – URL/Port prüfen"
+                        f"HTTP {resp.status} von {self._url}/api/documents/ – URL/Port prüfen",
+                        resp.status,
                     )
         except (aiohttp.ClientError, TimeoutError) as err:
             raise PaperlessError(f"{type(err).__name__}: {err}") from err
@@ -75,10 +93,11 @@ class PaperlessClient:
                 timeout=ClientTimeout(total=120),
             ) as resp:
                 if resp.status in (401, 403):
-                    raise PaperlessAuthError("Invalid token")
+                    raise PaperlessAuthError("Invalid token", resp.status)
                 if resp.status != 200:
                     raise PaperlessError(
-                        f"Upload failed (HTTP {resp.status}): {(await resp.text())[:200]}"
+                        f"Upload failed (HTTP {resp.status}): {(await resp.text())[:200]}",
+                        resp.status,
                     )
                 return (await resp.text()).strip().strip('"')
         except (aiohttp.ClientError, TimeoutError) as err:

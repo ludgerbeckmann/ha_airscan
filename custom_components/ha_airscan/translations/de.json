@@ -91,6 +91,9 @@
       },
       "batch_discard": {
         "name": "Stapel: Verwerfen"
+      },
+      "retry_queue": {
+        "name": "Warteschlange jetzt senden"
       }
     },
     "sensor": {
@@ -101,7 +104,8 @@
           "batch": "Stapel offen",
           "running": "Läuft",
           "done": "Fertig",
-          "error": "Fehler"
+          "error": "Fehler",
+          "queued": "Wartet auf Paperless"
         }
       },
       "pages": {
@@ -120,6 +124,9 @@
       },
       "last_scan": {
         "name": "Letzter Scan"
+      },
+      "queue": {
+        "name": "Warteschlange"
       }
     }
   },
@@ -278,6 +285,16 @@
     "batch_discard": {
       "name": "Stapel: Verwerfen",
       "description": "Leert den Zwischenspeicher.",
+      "fields": {
+        "config_entry": {
+          "name": "Scanner",
+          "description": "Bei mehreren Scannern auswählen."
+        }
+      }
+    },
+    "retry_queue": {
+      "name": "Warteschlange senden",
+      "description": "Versucht sofort, wartende Scans an Paperless zu übertragen.",
       "fields": {
         "config_entry": {
           "name": "Scanner",

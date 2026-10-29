@@ -408,3 +408,169 @@ def test_last_scan_summary():
                    "blank_removed": 2, "finished_at": "2026-10-27T20:00:13+00:00"}
     out = summary.summarize({"pages": 1, "source": "platen", "destination": "file"}, when)
     assert out["document_id"] is None and out["blank_removed"] == 0
+
+
+# --- delivery queue ---------------------------------------------------------------
+
+import types as _types
+
+
+def test_outbox_store(tmp_path):
+    store_mod = _load("outbox_store")
+    store = store_mod.OutboxStore(tmp_path / "q")
+    assert store.load() == []
+    a = store.add(b"%PDF-a", {"filename": "a.pdf", "title": "A", "tags": ["1"]})
+    store.add(b"%PDF-b", {"filename": "b.pdf", "title": "B", "tags": []})
+    items = store.load()
+    assert [i["title"] for i in items] == ["A", "B"]                      # oldest first
+    assert store.read_pdf(a["id"]) == b"%PDF-a"
+    store.update(items[0], attempts=3, last_error="boom")
+    assert store.load()[0]["attempts"] == 3
+    # a JSON without its PDF (crash while removing) and garbage are ignored, not fatal
+    (store.path / "x.json").write_text('{"id": "nope"}')
+    (store.path / "y.json").write_text("not json")
+    assert len(store.load()) == 2
+    store.remove(a["id"])
+    assert [i["title"] for i in store.load()] == ["B"]
+    assert not (store.path / f"{a['id']}.pdf").exists()
+    # a new store instance (= after a restart) sees the same queue
+    assert [i["title"] for i in store_mod.OutboxStore(tmp_path / "q").load()] == ["B"]
+    assert [store_mod.next_delay(n) for n in (0, 1, 2, 3, 4, 5, 6, 50)] == [60, 60, 120, 300, 600, 900, 900, 900]
+
+
+def test_paperless_errors_are_classified():
+    paperless = _load("paperless")
+    P = paperless.PaperlessError
+    assert P("conn").retryable                                  # no HTTP status: outage / timeout
+    assert P("x", 502).retryable and P("x", 503).retryable and P("x", 429).retryable
+    assert paperless.PaperlessAuthError("tok", 401).retryable   # token can be fixed in the options
+    assert not P("bad request", 400).retryable and not P("too large", 413).retryable
+    assert not paperless.PaperlessTaskFailed("duplicate").retryable
+
+
+def test_delivery_queue(monkeypatch, tmp_path):
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+
+    paperless = _load("paperless")
+
+    class HAError(Exception):
+        pass
+
+    def mod(name, **attrs):
+        m = _types.ModuleType(name)
+        m.__dict__.update(attrs)
+        monkeypatch.setitem(sys.modules, name, m)
+        return m
+
+    mod("homeassistant"); mod("homeassistant.helpers"); mod("homeassistant.util")
+    mod("homeassistant.core", CALLBACK_TYPE=object, HomeAssistant=object, callback=lambda f: f)
+    mod("homeassistant.exceptions", HomeAssistantError=HAError)
+    mod("homeassistant.helpers.event", async_call_later=lambda hass, delay, action: (hass.timers.append((delay, action)), lambda: None)[1])
+    mod("homeassistant.util.dt", utcnow=lambda: datetime.now(timezone.utc))
+    waits = []
+
+    async def fake_wait(data, info):
+        if waits:
+            outcome = waits.pop(0)
+            if isinstance(outcome, Exception):
+                raise outcome
+            info.update(outcome)
+
+    monkeypatch.setitem(sys.modules, "airscan_pkg.scan", _types.SimpleNamespace(wait_for_paperless=fake_wait))
+    delivery = _load("delivery")
+
+    class Bus:
+        def __init__(self):
+            self.events = []
+
+        def async_fire(self, name, data):
+            self.events.append((name, data))
+
+    class Hass:
+        def __init__(self):
+            self.bus, self.timers = Bus(), []
+
+        async def async_add_executor_job(self, fn, *args):
+            return fn(*args)
+
+    class Tracker:
+        status, detail = "queued", ""
+
+        def update(self, status=None, detail=None, pages=None):
+            self.status = status or self.status
+            self.detail = detail if detail is not None else self.detail
+
+    class FakePaperless:
+        def __init__(self):
+            self.script, self.sent = [], []
+
+        async def upload(self, pdf, filename, **kw):
+            outcome = self.script.pop(0)
+            if isinstance(outcome, Exception):
+                raise outcome
+            self.sent.append((filename, kw.get("title"), pdf))
+            return outcome
+
+    async def go():
+        hass, tracker, pl = Hass(), Tracker(), FakePaperless()
+        box = delivery.Outbox(hass, tmp_path / "box", lambda: None)
+        box.data = SimpleNamespace(paperless=pl, tracker=tracker)
+        for n in ("A", "B"):
+            await box.async_add(f"%PDF-{n}".encode(), {"filename": f"{n}.pdf", "title": n, "tags": ["1"]}, "down")
+        assert len(box.pending) == 2
+
+        # 1) Paperless still down: nothing lost, retry scheduled with growing delay
+        for expected in (60, 120, 300):
+            pl.script = [paperless.PaperlessError("ConnectError")]
+            result = await box.async_deliver()
+            assert result == {"delivered": 0, "remaining": 2, "rejected": 0}
+            assert hass.timers[-1][0] == expected
+            assert tracker.status == "queued" and "nicht erreichbar" in tracker.detail
+        assert box.items[0]["attempts"] == 4 and "ConnectError" in box.items[0]["last_error"]
+
+        # 2) wrong token is retryable too (the user can fix it); the scan stays queued
+        pl.script = [paperless.PaperlessAuthError("Invalid token", 401)]
+        assert (await box.async_deliver())["remaining"] == 2
+
+        # 3) a restart in between: a fresh Outbox finds the same two scans on disk
+        box2 = delivery.Outbox(hass, tmp_path / "box", lambda: None)
+        await box2.async_load()
+        assert [i["title"] for i in box2.pending] == ["A", "B"]
+        box2.data = box.data
+
+        # 4) Paperless is back: both delivered, in order, files removed, 'done' status, event fired
+        pl.script = ["task-a", "task-b"]
+        waits[:] = [{"document_id": 11}, {"document_id": 12}]
+        result = await box2.async_deliver()
+        assert result == {"delivered": 2, "remaining": 0, "rejected": 0}
+        assert [s[1] for s in pl.sent] == ["A", "B"] and pl.sent[0][2] == b"%PDF-A"
+        assert tracker.status == "done" and "2 Scan(s)" in tracker.detail
+        assert [e[1]["document_id"] for e in hass.bus.events] == [11, 12]
+        assert list((tmp_path / "box").glob("*")) == []
+
+        # 5) duplicate = Paperless already has it (first upload succeeded, answer got lost): counts as delivered
+        await box2.async_add(b"%PDF-C", {"filename": "C.pdf", "title": "C", "tags": []}, "down")
+        pl.script = ["task-c"]
+        waits[:] = [HAError("Paperless hat das Dokument abgelehnt: scan.pdf: It is a duplicate of X (#7)")]
+        assert (await box2.async_deliver())["delivered"] == 1
+
+        # 6) Paperless refuses for good (HTTP 400, or failed processing): file is kept, other scans continue
+        await box2.async_add(b"%PDF-D", {"filename": "D.pdf", "title": "D", "tags": []}, "down")
+        await box2.async_add(b"%PDF-E", {"filename": "E.pdf", "title": "E", "tags": []}, "down")
+        pl.script = [paperless.PaperlessError("bad", 400), "task-e"]
+        waits[:] = [{"document_id": 99}]
+        result = await box2.async_deliver()
+        assert result == {"delivered": 1, "remaining": 0, "rejected": 1}
+        assert len(list((tmp_path / "box").glob("*.pdf"))) == 1               # the refused one stays for manual handling
+        assert box2.rejected[0]["title"] == "D" and not box2.pending
+        before = len(pl.sent)
+        await box2.async_deliver()                                           # refused items are not retried
+        assert len(pl.sent) == before
+
+        # 7) Paperless not configured at all: nothing is thrown away
+        box2.data = SimpleNamespace(paperless=None, tracker=tracker)
+        await box2.async_add(b"%PDF-F", {"filename": "F.pdf", "title": "F", "tags": []}, "down")
+        assert (await box2.async_deliver())["remaining"] == 1
+
+    asyncio.run(go())

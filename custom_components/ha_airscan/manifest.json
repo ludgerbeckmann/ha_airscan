@@ -1,6 +1,6 @@
 {
   "domain": "ha_airscan",
-  "name": "AirScan (eSCL) Scanner",
+  "name": "Scan to Paperless",
   "codeowners": [
     "@ludgerbeckmann"
   ],
@@ -14,7 +14,7 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/ludgerbeckmann/ha_airscan/issues",
   "requirements": [],
-  "version": "0.8.0",
+  "version": "0.9.0",
   "zeroconf": [
     {
       "type": "_uscan._tcp.local."

@@ -44,6 +44,7 @@ from .escl import (
     scan_region,
 )
 from .files import FileOutputError, write_atomic
+from .outbox_store import next_delay
 from .paperless import PaperlessError, PaperlessTaskFailed
 from .pdf import jpegs_to_pdf
 from .summary import summarize
@@ -196,18 +197,29 @@ async def _deliver(
     result: dict = {"pages": len(pages), "destination": destination, "title": title}
 
     if destination == "paperless":
+        upload = {
+            "title": title,
+            "tags": parse_ids(tags if tags is not None else opts.get(CONF_TAGS)),
+            "correspondent": correspondent or opts.get(CONF_CORRESPONDENT),
+            "document_type": document_type or opts.get(CONF_DOCUMENT_TYPE),
+        }
         try:
-            result["task_id"] = await data.paperless.upload(
-                pdf,
-                filename,
-                title=title,
-                tags=parse_ids(tags if tags is not None else opts.get(CONF_TAGS)),
-                correspondent=correspondent or opts.get(CONF_CORRESPONDENT),
-                document_type=document_type or opts.get(CONF_DOCUMENT_TYPE),
-            )
+            result["task_id"] = await data.paperless.upload(pdf, filename, **upload)
         except PaperlessError as err:
-            raise HomeAssistantError(f"Upload zu Paperless fehlgeschlagen: {err}") from err
-        await _wait_for_paperless(data, result)
+            if not err.retryable:
+                raise HomeAssistantError(f"Upload zu Paperless fehlgeschlagen: {err}") from err
+            # Paperless is down or the token needs fixing: keep the scan, retry automatically.
+            try:
+                await data.outbox.async_add(pdf, {"filename": filename, **upload}, str(err))
+            except OSError as disk_err:   # no room to keep it either: now the scan really fails
+                raise HomeAssistantError(
+                    f"Upload zu Paperless fehlgeschlagen ({err}) und Speichern in der Warteschlange ebenfalls ({disk_err})"
+                ) from err
+            data.outbox.async_schedule(next_delay(1))
+            result["queued"] = True
+            result["queue_error"] = str(err)
+            return result
+        await wait_for_paperless(data, result)
     else:
         target = Path(directory) / filename
         try:
@@ -218,7 +230,7 @@ async def _deliver(
     return result
 
 
-async def _wait_for_paperless(data: AirscanData, result: dict) -> None:
+async def wait_for_paperless(data: AirscanData, result: dict) -> None:
     """Report 'done' only once Paperless has really ingested the document.
 
     The upload returns as soon as Paperless queued the file; OCR and duplicate
@@ -271,6 +283,16 @@ def _finish(hass: HomeAssistant, entry: AirscanConfigEntry, result: dict) -> Non
     blank = result.get("blank_removed", 0)
     data.tracker.finished_at = dt_util.utcnow()
     data.tracker.last = summarize(result, data.tracker.finished_at)
+    if result.get("queued"):
+        waiting = len(data.outbox.pending)
+        data.tracker.update(
+            "queued",
+            f"{result['pages']} Seite(n) gescannt – Paperless nicht erreichbar, {waiting} Scan(s) warten "
+            f"auf automatische Übertragung ({result.get('queue_error', '')})",
+            result["pages"],
+        )
+        hass.bus.async_fire(EVENT_SCAN_FINISHED, {"entry_id": entry.entry_id, **result})
+        return
     data.tracker.update(
         "done",
         f"{result['pages']} Seite(n) → {result['destination']}"

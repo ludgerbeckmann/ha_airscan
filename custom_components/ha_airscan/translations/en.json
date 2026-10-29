@@ -91,6 +91,9 @@
       },
       "batch_discard": {
         "name": "Batch: discard"
+      },
+      "retry_queue": {
+        "name": "Send queue now"
       }
     },
     "sensor": {
@@ -101,7 +104,8 @@
           "batch": "Batch open",
           "running": "Running",
           "done": "Done",
-          "error": "Error"
+          "error": "Error",
+          "queued": "Waiting for Paperless"
         }
       },
       "pages": {
@@ -120,6 +124,9 @@
       },
       "last_scan": {
         "name": "Last scan"
+      },
+      "queue": {
+        "name": "Queue"
       }
     }
   },
@@ -278,6 +285,16 @@
     "batch_discard": {
       "name": "Batch: discard",
       "description": "Empties the buffer.",
+      "fields": {
+        "config_entry": {
+          "name": "Scanner",
+          "description": "Select when you have several scanners."
+        }
+      }
+    },
+    "retry_queue": {
+      "name": "Send queue",
+      "description": "Immediately tries to upload waiting scans to Paperless.",
       "fields": {
         "config_entry": {
           "name": "Scanner",
