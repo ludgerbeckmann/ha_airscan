@@ -1,0 +1,47 @@
+<!doctype html><meta charset="utf-8"><title>ha-airscan-card harness</title>
+<style>
+body{margin:0;padding:24px;background:#e9edf2;font-family:Roboto,"Segoe UI",system-ui,sans-serif}
+.grid{display:grid;grid-template-columns:repeat(3,360px);gap:24px;justify-content:center}
+.theme-light{--primary-color:#03a9f4;--primary-text-color:#212121;--secondary-text-color:#727272;--secondary-background-color:#f1f3f6;--card-background-color:#fff;--divider-color:#e0e0e0;--text-primary-color:#fff;--disabled-text-color:#bdbdbd}
+.theme-dark{--primary-color:#03a9f4;--primary-text-color:#e1e1e1;--secondary-text-color:#9b9b9b;--secondary-background-color:#2a2f3a;--card-background-color:#1c1c1c;--divider-color:#3a3a3a;--text-primary-color:#fff;--disabled-text-color:#6f6f6f}
+cap{display:block;font-size:12px;font-weight:600;color:#667;margin:0 0 6px 4px;text-transform:uppercase}
+ha-card{display:block;background:var(--card-background-color);border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+</style>
+<div class="grid" id="grid"></div>
+<script src="../../custom_components/ha_airscan/frontend/ha-airscan-card.js"></script>
+<script>
+const now = Date.now();
+const iso = (msFromNow) => new Date(now + msFromNow).toISOString();
+function fakeHass(o) {
+  const dev = "d1";
+  const ent = (id, tk, platform = "ha_airscan") => [id, { entity_id: id, device_id: dev, platform, translation_key: tk }];
+  const entities = Object.fromEntries([
+    ent("sensor.epson_status", "status"), ent("sensor.epson_seiten", "pages"), ent("sensor.epson_letzter_scan", "last_scan"), ent("sensor.epson_einzug", "feeder"),
+    ent("button.epson_scan_flachbett", "scan_platen"), ent("button.epson_scan_einzug_einseitig", "scan_adf_simplex"), ent("button.epson_scan_einzug_beidseitig", "scan_adf_duplex"),
+    ent("button.epson_stapel_senden", "batch_send"), ent("button.epson_stapel_verwerfen", "batch_discard"),
+  ]);
+  const attrs = Object.assign({ friendly_name: "EPSON ET-3950 Series Status", detail: "Bereit", pages: 0, batch_pages: 0, batch_expires_at: null, batch_auto_send: true,
+    paperless_url: "http://paperless.local:8000", settings: { resolution: 300, color_mode: "color", page_size: "a4", blank_detection: true, adf_align: "right" } }, o.attrs);
+  const states = {
+    "sensor.epson_status": { state: o.status, attributes: attrs },
+    "sensor.epson_einzug": { state: o.feeder || "loaded", attributes: {} },
+    "sensor.epson_letzter_scan": { state: o.last || iso(-10 * 60000), attributes: {} },
+  };
+  const calls = [];
+  return { language: o.lang || "de", states, entities, devices: { d1: { name: "EPSON ET-3950 Series" } }, calls,
+    callService: (d, s, data) => { calls.push([d, s, data]); return o.fail ? Promise.reject(new Error(o.fail)) : Promise.resolve(); } };
+}
+function mount(o, parent = document.getElementById("grid")) {
+  const wrap = document.createElement("div");
+  wrap.className = o.dark ? "theme-dark" : "theme-light";
+  wrap.innerHTML = `<cap>${o.cap || ""}</cap>`;
+  const card = document.createElement("ha-airscan-card");
+  if (o.ui) localStorage.setItem("ha-airscan-card:sensor.epson_status", JSON.stringify(o.ui)); else localStorage.removeItem("ha-airscan-card:sensor.epson_status");
+  card.setConfig({ entity: "sensor.epson_status" });
+  card.hass = fakeHass(o);
+  wrap.appendChild(card); parent.appendChild(wrap);
+  return card;
+}
+customElements.define("ha-card", class extends HTMLElement { connectedCallback() { Object.assign(this.style, { display: "block", background: "var(--card-background-color)", borderRadius: "12px", boxShadow: "0 2px 6px rgba(0,0,0,.15)" }); } });
+window.mount = mount; window.iso = iso;
+</script>

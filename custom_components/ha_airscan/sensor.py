@@ -15,7 +15,20 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import AirscanConfigEntry
-from .const import DOMAIN
+from .const import (
+    CONF_ADF_ALIGN,
+    CONF_BATCH_AUTO_SEND,
+    CONF_BLANK_DETECTION,
+    CONF_COLOR_MODE,
+    CONF_PAGE_SIZE,
+    CONF_PAPERLESS_URL,
+    CONF_RESOLUTION,
+    DEFAULT_ADF_ALIGN,
+    DEFAULT_COLOR_MODE,
+    DEFAULT_PAGE_SIZE,
+    DEFAULT_RESOLUTION,
+    DOMAIN,
+)
 from .escl import ADF_STATE_OPTIONS, adf_state_key
 from .state import STATUSES
 
@@ -66,6 +79,7 @@ class JobStatusSensor(_TrackerSensor):
 
     def __init__(self, entry: AirscanConfigEntry) -> None:
         super().__init__(entry, "status")
+        self._entry = entry
 
     @property
     def native_value(self) -> str:
@@ -75,10 +89,23 @@ class JobStatusSensor(_TrackerSensor):
     @property
     def extra_state_attributes(self) -> dict[str, str | int | None]:
         """Detail text, page counter and the facts of the last finished scan."""
+        opts = self._entry.options
+        expires = self._tracker.batch_expires_at
         return {
             "detail": self._tracker.detail,
             "pages": self._tracker.pages,
             "batch_pages": len(self._tracker.batch),
+            "batch_expires_at": expires.isoformat() if expires else None,
+            "batch_auto_send": bool(opts.get(CONF_BATCH_AUTO_SEND, False)),
+            "paperless_url": opts.get(CONF_PAPERLESS_URL) or None,
+            # Defaults of the integration, shown by the dashboard card.
+            "settings": {
+                "resolution": opts.get(CONF_RESOLUTION, DEFAULT_RESOLUTION),
+                "color_mode": opts.get(CONF_COLOR_MODE, DEFAULT_COLOR_MODE),
+                "page_size": opts.get(CONF_PAGE_SIZE, DEFAULT_PAGE_SIZE),
+                "blank_detection": bool(opts.get(CONF_BLANK_DETECTION, False)),
+                "adf_align": opts.get(CONF_ADF_ALIGN, DEFAULT_ADF_ALIGN),
+            },
             **self._tracker.last,
         }
 

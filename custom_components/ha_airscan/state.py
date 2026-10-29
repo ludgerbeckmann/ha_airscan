@@ -24,6 +24,7 @@ class ScanTracker:
         self.batch: list[bytes] = []
         self.last: dict = {}  # summary of the last finished scan
         self.finished_at: datetime | None = None
+        self.batch_expires_at: datetime | None = None
         self.batch_dpi = 300
         self.timer: CALLBACK_TYPE | None = None
 
@@ -46,3 +47,4 @@ class ScanTracker:
         if self.timer:
             self.timer()
             self.timer = None
+        self.batch_expires_at = None

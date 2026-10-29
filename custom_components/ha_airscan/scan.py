@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import timedelta
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -374,6 +375,7 @@ def _arm_stale_timer(hass: HomeAssistant, entry: AirscanConfigEntry) -> None:
 
     async def _expired(_now) -> None:
         data.tracker.timer = None
+        data.tracker.batch_expires_at = None
         if not data.tracker.batch:
             return
         if entry.options.get(CONF_BATCH_AUTO_SEND):
@@ -389,6 +391,8 @@ def _arm_stale_timer(hass: HomeAssistant, entry: AirscanConfigEntry) -> None:
         )
 
     data.tracker.timer = async_call_later(hass, minutes * 60, _expired)
+    data.tracker.batch_expires_at = dt_util.utcnow() + timedelta(minutes=minutes)
+    data.tracker.update()  # publish the new expiry time
 
 
 async def async_batch_add(

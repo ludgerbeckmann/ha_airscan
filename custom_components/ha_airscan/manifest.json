@@ -1,16 +1,26 @@
 {
   "domain": "ha_airscan",
   "name": "AirScan (eSCL) Scanner",
-  "codeowners": ["@ludgerbeckmann"],
+  "codeowners": [
+    "@ludgerbeckmann"
+  ],
   "config_flow": true,
+  "dependencies": [
+    "frontend",
+    "http"
+  ],
   "documentation": "https://github.com/ludgerbeckmann/ha_airscan",
   "integration_type": "device",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/ludgerbeckmann/ha_airscan/issues",
   "requirements": [],
-  "version": "0.7.1",
+  "version": "0.8.0",
   "zeroconf": [
-    {"type": "_uscan._tcp.local."},
-    {"type": "_uscans._tcp.local."}
+    {
+      "type": "_uscan._tcp.local."
+    },
+    {
+      "type": "_uscans._tcp.local."
+    }
   ]
 }
