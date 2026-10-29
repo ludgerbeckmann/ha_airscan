@@ -30,8 +30,13 @@ const assert = require("assert");
     const click = (c, sel) => root(c).querySelector(sel).click();
     const tick = () => new Promise((r) => setTimeout(r, 0));
 
-    const c = mount({ status: "idle" }, document.body);      // default source = glass
-    click(c, '[data-act="scan"]'); out.glass = c.hass ? null : c._hass.calls.slice();
+    const c = mount({ status: "idle" }, document.body);      // default source = feeder
+    out.defaultFeeder = root(c).querySelector('[data-act="src"][data-v="adf"]').classList.contains("on");
+    out.feederFirst = root(c).querySelector('.seg button').dataset.v;
+    out.simplex = c._hass.calls.length === 0 && (click(c, '[data-act="scan"]'), c._hass.calls.slice());
+    c._hass.calls.length = 0;
+    click(c, '[data-act="src"][data-v="platen"]'); await tick();
+    click(c, '[data-act="scan"]'); out.glass = c._hass.calls.slice();
     click(c, '[data-act="src"][data-v="adf"]'); await tick();
     click(c, '[data-act="duplex"]'); await tick();
     click(c, '[data-act="scan"]'); out.adfDuplex = c._hass.calls.slice();
@@ -74,6 +79,9 @@ const assert = require("assert");
     return out;
   });
 
+  assert.strictEqual(result.defaultFeeder, true, "feeder must be the default");
+  assert.strictEqual(result.feederFirst, "adf", "feeder button must be on the left");
+  assert.deepStrictEqual(result.simplex, [["ha_airscan", "scan", { source: "adf", duplex: false }]]);
   assert.deepStrictEqual(result.glass, [["ha_airscan", "batch_add", {}]]);
   assert.deepStrictEqual(result.adfDuplex[1], ["ha_airscan", "scan", { source: "adf", duplex: true }]);
   assert.deepStrictEqual(result.adfOverrides[2], ["ha_airscan", "scan", { source: "adf", duplex: true, resolution: 600, skip_blank: false }]);
@@ -83,7 +91,7 @@ const assert = require("assert");
   assert.strictEqual(result.runningDisabled, true);
   assert.strictEqual(result.link, "http://paperless.local:8000/documents/123/details");
   assert.strictEqual(result.toast, "Scanner is busy");
-  assert.strictEqual(result.en, "Scan page");
+  assert.strictEqual(result.en, "Scan feeder");
   assert.ok(/nicht gefunden/.test(result.missing));
   assert.deepStrictEqual(result.queue, [["ha_airscan", "retry_queue", {}]]);
   assert.ok(/2 Scans warten auf Paperless/.test(result.queueText) && /Nächster Versuch in 4 min/.test(result.queueText) && /1 von Paperless abgelehnt/.test(result.queueText), result.queueText);

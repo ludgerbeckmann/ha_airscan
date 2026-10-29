@@ -39,7 +39,7 @@ function mount(o, parent = document.getElementById("grid")) {
   wrap.className = o.dark ? "theme-dark" : "theme-light";
   wrap.innerHTML = `<cap>${o.cap || ""}</cap>`;
   const card = document.createElement("ha-airscan-card");
-  if (o.ui) localStorage.setItem("ha-airscan-card:sensor.epson_status", JSON.stringify(o.ui)); else localStorage.removeItem("ha-airscan-card:sensor.epson_status");
+  if (o.ui) localStorage.setItem("ha-airscan-card:v2:sensor.epson_status", JSON.stringify(o.ui)); else localStorage.removeItem("ha-airscan-card:v2:sensor.epson_status");
   card.setConfig({ entity: "sensor.epson_status" });
   card.hass = fakeHass(o);
   wrap.appendChild(card); parent.appendChild(wrap);
