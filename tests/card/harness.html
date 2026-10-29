@@ -20,7 +20,7 @@ function fakeHass(o) {
     ent("button.epson_scan_flachbett", "scan_platen"), ent("button.epson_scan_einzug_einseitig", "scan_adf_simplex"), ent("button.epson_scan_einzug_beidseitig", "scan_adf_duplex"),
     ent("button.epson_stapel_senden", "batch_send"), ent("button.epson_stapel_verwerfen", "batch_discard"),
   ]);
-  const attrs = Object.assign({ friendly_name: "EPSON ET-3950 Series Status", detail: "Bereit", pages: 0, batch_pages: 0, batch_expires_at: null, batch_auto_send: true,
+  const attrs = Object.assign({ friendly_name: "EPSON ET-3950 Series Status", detail: "Bereit", printer_online: true, printer_state: "Idle", pages: 0, batch_pages: 0, batch_expires_at: null, batch_auto_send: true,
     paperless_url: "http://paperless.local:8000", settings: { resolution: 300, color_mode: "color", page_size: "a4", blank_detection: true, adf_align: "right" } }, o.attrs);
   const states = {
     "sensor.epson_status": { state: o.status, attributes: attrs },

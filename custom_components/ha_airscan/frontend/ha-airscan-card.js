@@ -11,7 +11,7 @@ const CARD_VERSION = "0.8.0";
 
 const T = {
   de: {
-    ready: "Bereit", running: "Läuft", batch: "Stapel", done: "Fertig", queued: "Wartet", error: "Fehler", unavailable: "Nicht verfügbar",
+    ready: "Bereit", running: "Läuft", batch: "Stapel", done: "Fertig", queued: "Wartet", error: "Fehler", unavailable: "Nicht verfügbar", offline: "Offline",
     platen: "Glas", adf: "Einzug", loaded: "Geladen", empty: "Leer", processing: "Arbeitet", jam: "Papierstau",
     cover_open: "Abdeckung offen", feeder_error: "Fehler",
     duplex: "Beidseitig", duplex_lc: "beidseitig", scan_glass: "Seite scannen", scan_adf: "Einzug scannen", scan_adf_duplex: "Einzug scannen · beidseitig",
@@ -27,10 +27,12 @@ const T = {
     default: "Standard", max: "Volle Fläche", batch_lock: "Erst den Stapel senden oder verwerfen",
     queue_title: (n) => `${n} ${n === 1 ? "Scan wartet" : "Scans warten"} auf Paperless`, queue_hint: "Gespeichert, wird automatisch erneut gesendet.",
     queue_retry: "Jetzt senden", queue_next: (m) => `Nächster Versuch in ${m} min`, queue_rejected: (n) => `${n} von Paperless abgelehnt (Datei bleibt im Ordner ha_airscan_outbox)`,
+    printer_offline: "Drucker nicht erreichbar", printer_offline_hint: "Ist er eingeschaltet und im Netzwerk? Ein Scan wird trotzdem versucht.",
+    printer_fault: (s) => `Der Drucker meldet einen Fehler (${s}).`,
     missing: "Entität nicht gefunden – bitte den Status-Sensor des Scanners angeben.",
   },
   en: {
-    ready: "Ready", running: "Running", batch: "Batch", done: "Done", queued: "Waiting", error: "Error", unavailable: "Unavailable",
+    ready: "Ready", running: "Running", batch: "Batch", done: "Done", queued: "Waiting", error: "Error", unavailable: "Unavailable", offline: "Offline",
     platen: "Glass", adf: "Feeder", loaded: "Loaded", empty: "Empty", processing: "Busy", jam: "Jam",
     cover_open: "Cover open", feeder_error: "Error",
     duplex: "Two-sided", duplex_lc: "two-sided", scan_glass: "Scan page", scan_adf: "Scan feeder", scan_adf_duplex: "Scan feeder · two-sided",
@@ -46,6 +48,8 @@ const T = {
     default: "Default", max: "Full area", batch_lock: "Send or discard the batch first",
     queue_title: (n) => `${n} ${n === 1 ? "scan is" : "scans are"} waiting for Paperless`, queue_hint: "Saved, will be sent again automatically.",
     queue_retry: "Send now", queue_next: (m) => `Next attempt in ${m} min`, queue_rejected: (n) => `${n} refused by Paperless (file stays in the ha_airscan_outbox folder)`,
+    printer_offline: "Printer not reachable", printer_offline_hint: "Is it switched on and on the network? A scan will be attempted anyway.",
+    printer_fault: (s) => `The printer reports a fault (${s}).`,
     missing: "Entity not found – please select the scanner's status sensor.",
   },
 };
@@ -282,8 +286,12 @@ class HaAirscanCard extends HTMLElement {
     } else if (running) sub = `${t[source === "adf" ? "adf" : "platen"]}${source === "adf" && ui.duplex && caps.duplex ? ` · ${t.duplex_lc}` : ""} · ${t.scanning.replace(/ …$/, "")}`;
     else if (finished) sub = `${t.last_scan} ${this._rel(finished)}` + (status === "done" && a.pages ? ` · ${t.pages_n(a.pages)}` : "");
 
-    const chipKey = status === "unavailable" ? "unavailable" : (STATUS_KEYS[status] || "ready");
-    const chipCls = status === "idle" ? "ready" : (status === "unavailable" ? "unavailable" : status);
+    // The printer did not answer the status polls (shown unless a scan is running or being delivered)
+    const offline = a.printer_online === false && !running;
+    const fault = a.printer_online !== false && ["Stopped", "Down"].includes(a.printer_state) && !running;
+    let chipKey = status === "unavailable" ? "unavailable" : (STATUS_KEYS[status] || "ready");
+    let chipCls = status === "idle" ? "ready" : (status === "unavailable" ? "unavailable" : status);
+    if (offline && ["idle", "done", "error"].includes(status)) { chipKey = "offline"; chipCls = "unavailable"; }
     const beam = running ? "running" : status === "done" ? "done" : status === "error" ? "error" : "";
 
     // source selector
@@ -312,6 +320,10 @@ class HaAirscanCard extends HTMLElement {
     } else if (status === "error") {
       banner = `<div class="banner err"><b>${esc(t.failed)}</b><span>${esc(String(a.detail || "").replace(/^Scan fehlgeschlagen:\s*/i, ""))}</span></div>`;
     }
+
+    const printerBox = offline
+      ? `<div class="banner err"><b>${esc(t.printer_offline)}</b><span>${esc(t.printer_offline_hint)}</span></div>`
+      : fault ? `<div class="banner err"><b>${esc(t.printer_fault(a.printer_state))}</b></div>` : "";
 
     // scans waiting for Paperless (stored on disk, retried automatically)
     const waiting = queue && !["unknown", "unavailable"].includes(queue.state) ? Number(queue.state) : 0;
@@ -365,7 +377,7 @@ class HaAirscanCard extends HTMLElement {
     root.innerHTML = `<style>${STYLE}</style><ha-card><div class="body">
       <div class="head"><div class="logo">${LOGO}</div><div class="t"><div class="name">${esc(name)}</div><div class="sub">${esc(sub)}</div></div><span class="chip ${chipCls}">${esc(t[chipKey])}</span></div>
       <div class="beam ${beam}"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-      ${seg}${middle}${banner}${queueBox}${opts}${panel}${actions}
+      ${seg}${middle}${printerBox}${banner}${queueBox}${opts}${panel}${actions}
       ${this._toast ? `<div class="toast">${esc(this._toast)}</div>` : ""}
     </div></ha-card>`;
   }

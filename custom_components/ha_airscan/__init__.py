@@ -123,11 +123,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirscanConfigEntry) -> b
     except EsclError as err:
         raise ConfigEntryNotReady(str(err)) from err
 
+    tracker = ScanTracker(hass, entry.entry_id)
+
     async def _update() -> Status:
+        was_online, was_state = tracker.printer_online, tracker.printer_state
         try:
-            return await client.status()
+            status = await client.status()
         except EsclError as err:
+            tracker.printer_failures += 1
+            if tracker.printer_online != was_online:
+                tracker.update()            # the card shows "printer offline"
             raise UpdateFailed(str(err)) from err
+        tracker.printer_failures = 0
+        tracker.printer_state = status.state
+        if not was_online or status.state != was_state:
+            tracker.update()
+        return status
 
     coordinator = DataUpdateCoordinator(
         hass,
@@ -149,7 +160,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirscanConfigEntry) -> b
             entry.options[CONF_PAPERLESS_TOKEN],
         )
 
-    tracker = ScanTracker(hass, entry.entry_id)
     outbox = Outbox(hass, Path(hass.config.path("ha_airscan_outbox", entry.entry_id)), tracker.update)
     await outbox.async_load()
     data = AirscanData(client, capabilities, paperless, coordinator, asyncio.Lock(), tracker, outbox)

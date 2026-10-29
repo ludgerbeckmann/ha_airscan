@@ -24,7 +24,7 @@ Scannt über das Netzwerk (eSCL/AirScan, z. B. Epson-Multifunktionsgeräte) und 
 | Entität | Beschreibung |
 |---|---|
 | Buttons | Scan Flachbett / Einzug (einseitig) / Einzug (beidseitig), Stapel senden / verwerfen |
-| Sensor *Status* | `idle` (Bereit), `batch` (Stapel offen), `running` (Läuft), `done` (Fertig), `queued` (Wartet auf Paperless), `error` (Fehler); Attribute: `detail` (Klartext), `pages`, `batch_pages`, `source` (`platen`/`adf`/`adf_duplex`), `destination`, `document_id`, `blank_removed`, `finished_at` (des letzten Scans) |
+| Sensor *Status* | `idle` (Bereit), `batch` (Stapel offen), `running` (Läuft), `done` (Fertig), `queued` (Wartet auf Paperless), `error` (Fehler); Attribute: `detail` (Klartext), `printer_online`, `printer_state`, `pages`, `batch_pages`, `source` (`platen`/`adf`/`adf_duplex`), `destination`, `document_id`, `blank_removed`, `finished_at` (des letzten Scans) |
 | Sensor *Letzter Scan* | Zeitpunkt, an dem der letzte Scan abgeschlossen wurde (bleibt nach einem Neustart erhalten) |
 | Sensor *Warteschlange* | Anzahl der Scans, die auf Paperless warten (Attribute: Fehlergrund, nächster Versuch) |
 | Sensor *Seiten* | Seiten des laufenden/letzten Jobs bzw. des offenen Stapels |
@@ -66,6 +66,7 @@ entity: sensor.epson_et_3950_series_status   # der Status-Sensor des Scanners
 
 - Quelle wählen (Glas / Einzug), bei Bedarf *Beidseitig* und über das Zahnrad Auflösung, Farbe, Format und Leerseiten **für den nächsten Scan** (wird im Browser gemerkt, die Integrationsoptionen bleiben unverändert).
 - Zeigt Status, laufende Seitenzahl, Einzugsstatus, den Stapel mit Restzeit, das Ergebnis mit Link zu Paperless und Fehlermeldungen. Farben und Schrift folgen dem Theme.
+- **Drucker nicht erreichbar:** Antwortet der Drucker auf zwei Statusabfragen in Folge (alle 30 s) nicht, zeigt die Karte „Offline“ mit einem Hinweis. Der Scan-Knopf bleibt aktiv, denn ein Drucker im Standby wird beim Scan geweckt. Meldet der Drucker selbst einen Fehler (`Stopped`/`Down`), steht das ebenfalls dort. Während eines laufenden Scans wird nie gewarnt, weil der Drucker dann Abfragen oft verzögert beantwortet. Die Angaben stehen als Attribute `printer_online` und `printer_state` am Status-Sensor und lassen sich für Automationen nutzen.
 - Optional: `name` (Titel) und `config_entry` (bei mehreren Scannern).
 - Die Karte ruft nur die Services der Integration auf; ohne eigene Karte funktioniert weiterhin das Beispiel in [`examples/dashboard.yaml`](examples/dashboard.yaml) mit Standard-Karten.
 
