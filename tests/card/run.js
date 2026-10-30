@@ -95,7 +95,7 @@ const assert = require("assert");
   });
 
   assert.strictEqual(result.defaultFeeder, true, "feeder must be the default");
-  assert.deepStrictEqual(result.modes, ["adf1", "adf2", "platen"], "feeder one-sided, feeder two-sided, glass");
+  assert.deepStrictEqual(result.modes, ["adf1", "adf2", "platen"], "feeder one-sided, feeder two-sided, flatbed");
   assert.strictEqual(result.optsRows, 1, "the options must fit in one row");
   assert.strictEqual(result.duplexOn, true);
   assert.deepStrictEqual(result.simplex, [["ha_airscan", "scan", { source: "adf", duplex: false }]]);
