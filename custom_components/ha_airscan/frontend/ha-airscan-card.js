@@ -14,7 +14,7 @@ const T = {
     ready: "Bereit", running: "Läuft", batch: "Stapel", done: "Fertig", queued: "Wartet", error: "Fehler", unavailable: "Nicht verfügbar", offline: "Offline",
     platen: "Glas", adf: "Einzug", loaded: "Geladen", empty: "Leer", processing: "Arbeitet", jam: "Papierstau",
     cover_open: "Abdeckung offen", feeder_error: "Fehler",
-    duplex: "Beidseitig", duplex_lc: "beidseitig", scan_glass: "Seite scannen", scan_adf: "Einzug scannen", scan_adf_duplex: "Einzug scannen · beidseitig",
+    simplex: "einseitig", duplex_lc: "beidseitig", feeder_reports: "Einzug meldet:", scan_glass: "Seite scannen", scan_adf: "Einzug scannen", scan_adf_duplex: "Einzug scannen · beidseitig",
     scanning: "Scannt …", retry: "Erneut versuchen", add_page: "+ Weitere Seite", send: "Senden", discard: "Stapel verwerfen",
     last_scan: "Letzter Scan", pages_n: (n) => `${n} ${n === 1 ? "Seite" : "Seiten"}`,
     pages_scanned: "Seiten gescannt", in_batch: (n) => `${n} ${n === 1 ? "Seite" : "Seiten"} im Stapel`,
@@ -35,7 +35,7 @@ const T = {
     ready: "Ready", running: "Running", batch: "Batch", done: "Done", queued: "Waiting", error: "Error", unavailable: "Unavailable", offline: "Offline",
     platen: "Glass", adf: "Feeder", loaded: "Loaded", empty: "Empty", processing: "Busy", jam: "Jam",
     cover_open: "Cover open", feeder_error: "Error",
-    duplex: "Two-sided", duplex_lc: "two-sided", scan_glass: "Scan page", scan_adf: "Scan feeder", scan_adf_duplex: "Scan feeder · two-sided",
+    simplex: "one-sided", duplex_lc: "two-sided", feeder_reports: "Feeder reports:", scan_glass: "Scan page", scan_adf: "Scan feeder", scan_adf_duplex: "Scan feeder · two-sided",
     scanning: "Scanning …", retry: "Try again", add_page: "+ Another page", send: "Send", discard: "Discard batch",
     last_scan: "Last scan", pages_n: (n) => `${n} ${n === 1 ? "page" : "pages"}`,
     pages_scanned: "pages scanned", in_batch: (n) => `${n} ${n === 1 ? "page" : "pages"} in the batch`,
@@ -87,21 +87,19 @@ ha-card{color:var(--primary-text-color)}
 @keyframes pulse{50%{opacity:.35}}
 .beam.error i{background:var(--error-color,#db4437);opacity:1}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--secondary-background-color);border-radius:12px;padding:4px;gap:4px}
-.seg button{border:0;background:transparent;border-radius:9px;padding:10px 8px;font:inherit;font-weight:600;font-size:14px;color:var(--secondary-text-color);display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer}
+.seg button{border:0;background:transparent;border-radius:9px;padding:8px 4px;font:inherit;font-weight:600;font-size:14px;line-height:1.15;color:var(--secondary-text-color);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;min-width:0}
+.seg .l1{display:flex;align-items:center;gap:6px}
 .seg button.on{background:var(--card-background-color,#fff);color:var(--primary-text-color);box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .seg button[disabled]{opacity:.5;cursor:not-allowed}
 .seg small{font-weight:500;font-size:11.5px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--disabled-text-color,#9e9e9e)}
 .dot.loaded{background:var(--success-color,#15a850)}.dot.empty,.dot.jam,.dot.cover_open,.dot.error{background:var(--error-color,#db4437)}.dot.processing{background:#29ACE2}
 .opts{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.pill{font-size:12px;background:var(--secondary-background-color);color:var(--secondary-text-color);padding:5px 10px;border-radius:99px;font-weight:500}
+.feeder-hint{font-size:12.5px;margin:-4px 2px 0;color:var(--error-color,#db4437)}
+.pill{font-size:12px;background:var(--secondary-background-color);color:var(--secondary-text-color);padding:5px 9px;border-radius:99px;font-weight:500;white-space:nowrap}
 .pill.set{color:var(--primary-color)}
 .gear{margin-left:auto;border:0;background:transparent;color:var(--secondary-text-color);font-size:20px;cursor:pointer;padding:2px 6px}
 .gear.on{color:var(--primary-color)}
-.sw{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-right:6px;cursor:pointer;user-select:none}
-.sw .knob{width:34px;height:20px;border-radius:99px;background:var(--disabled-text-color,#bdbdbd);position:relative;display:inline-block;transition:background .15s}
-.sw .knob:after{content:"";position:absolute;left:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s}
-.sw.on .knob{background:var(--primary-color)}.sw.on .knob:after{transform:translateX(14px)}
 .panel{background:var(--secondary-background-color);border-radius:12px;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
 .panel h4{grid-column:1/-1;margin:0;font-size:12.5px;font-weight:600;color:var(--secondary-text-color)}
 .panel label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--secondary-text-color)}
@@ -218,8 +216,12 @@ class HaAirscanCard extends HTMLElement {
     if (!el || el.disabled) return;
     const act = el.dataset.act;
     const ui = this._ui;
-    if (act === "src") { ui.source = el.dataset.v; this._save(); this._sig = ""; this._update(); }
-    else if (act === "duplex") { ui.duplex = !ui.duplex; this._save(); this._sig = ""; this._update(); }
+    if (act === "mode") {
+      const v = el.dataset.v;
+      ui.source = v === "platen" ? "platen" : "adf";
+      if (v !== "platen") ui.duplex = v === "adf2";
+      this._save(); this._sig = ""; this._update();
+    }
     else if (act === "gear") { ui.open = !ui.open; this._sig = ""; this._update(); }
     else if (act === "scan") {
       if (ui.source === "adf") this._call("scan", { source: "adf", duplex: ui.duplex && this._caps.duplex, ...this._overrides(false) });
@@ -296,10 +298,19 @@ class HaAirscanCard extends HTMLElement {
 
     // source selector
     const feederKey = feeder ? (FEEDER_KEYS[feeder.state] || null) : null;
-    const seg = (caps.platen && caps.adf) ? `<div class="seg">
-        <button data-act="src" data-v="adf" class="${source === "adf" ? "on" : ""}" ${running || locked ? "disabled" : ""} ${locked ? `title="${esc(t.batch_lock)}"` : ""}>${esc(t.adf)}${feederKey ? `<span class="dot ${esc(feeder.state)}"></span><small>${esc(t[feederKey])}</small>` : ""}</button>
-        <button data-act="src" data-v="platen" class="${source === "platen" ? "on" : ""}" ${running ? "disabled" : ""}>${esc(t.platen)}</button>
-      </div>` : "";
+    const modes = [];
+    if (caps.adf) {
+      modes.push({ id: "adf1", feeder: true, l1: t.adf, l2: t.simplex });
+      if (caps.duplex) modes.push({ id: "adf2", feeder: true, l1: t.adf, l2: t.duplex_lc });
+    }
+    if (caps.platen) modes.push({ id: "platen", feeder: false, l1: t.platen, l2: "" });
+    const modeNow = source === "platen" ? "platen" : (ui.duplex && caps.duplex ? "adf2" : "adf1");
+    const modeButton = (m) => `<button data-act="mode" data-v="${m.id}" class="${modeNow === m.id ? "on" : ""}" ${running || (locked && m.feeder) ? "disabled" : ""} ${locked && m.feeder ? `title="${esc(t.batch_lock)}"` : ""}>
+        <span class="l1">${m.feeder && feederKey ? `<span class="dot ${esc(feeder.state)}" title="${esc(t[feederKey])}"></span>` : ""}${esc(m.l1)}</span>${m.l2 ? `<small>${esc(m.l2)}</small>` : ""}</button>`;
+    const seg = modes.length > 1 ? `<div class="seg">${modes.map(modeButton).join("")}</div>` : "";
+    // the feeder state as text only when it needs attention (it can be stale after standby)
+    const feederHint = source === "adf" && feederKey && !running && !["loaded", "processing"].includes(feeder.state)
+      ? `<div class="feeder-hint">${esc(t.feeder_reports)} ${esc(t[feederKey])}</div>` : "";
 
     // middle part by status
     let middle = "";
@@ -346,11 +357,10 @@ class HaAirscanCard extends HTMLElement {
       const blankOn = ui.blank !== "default" ? ui.blank === "on" : !!settings.blank_detection;
       const pill = (txt, set) => `<span class="pill ${set ? "set" : ""}">${esc(txt)}</span>`;
       opts = `<div class="opts">
-        ${source === "adf" && caps.duplex ? `<label class="sw ${ui.duplex ? "on" : ""}" data-act="duplex" role="switch" aria-checked="${ui.duplex}"><span class="knob"></span>${esc(t.duplex)}</label>` : ""}
         ${eff.res ? pill(`${eff.res} dpi`, ui.resolution !== "default") : ""}
         ${eff.color ? pill(eff.color === "grayscale" ? t.gray : t.color, ui.color !== "default") : ""}
         ${eff.page ? pill(eff.page === "max" ? t.max : String(eff.page).toUpperCase(), ui.page !== "default") : ""}
-        ${source === "adf" ? pill(`${t.blank} ${blankOn ? "✓" : "–"}`, ui.blank !== "default") : ""}
+        ${source === "adf" && blankOn ? pill(`${t.blank} ✓`, ui.blank !== "default") : ""}
         <button class="gear ${ui.open ? "on" : ""}" data-act="gear" aria-label="${esc(t.settings)}" title="${esc(t.settings)}">⚙︎</button>
       </div>`;
       if (ui.open) {
@@ -377,7 +387,7 @@ class HaAirscanCard extends HTMLElement {
     root.innerHTML = `<style>${STYLE}</style><ha-card><div class="body">
       <div class="head"><div class="logo">${LOGO}</div><div class="t"><div class="name">${esc(name)}</div><div class="sub">${esc(sub)}</div></div><span class="chip ${chipCls}">${esc(t[chipKey])}</span></div>
       <div class="beam ${beam}"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-      ${seg}${middle}${printerBox}${banner}${queueBox}${opts}${panel}${actions}
+      ${seg}${feederHint}${middle}${printerBox}${banner}${queueBox}${opts}${panel}${actions}
       ${this._toast ? `<div class="toast">${esc(this._toast)}</div>` : ""}
     </div></ha-card>`;
   }

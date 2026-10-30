@@ -64,7 +64,7 @@ type: custom:ha-airscan-card
 entity: sensor.epson_et_3950_series_status   # der Status-Sensor des Scanners
 ```
 
-- Quelle wählen (Glas / Einzug), bei Bedarf *Beidseitig* und über das Zahnrad Auflösung, Farbe, Format und Leerseiten **für den nächsten Scan** (wird im Browser gemerkt, die Integrationsoptionen bleiben unverändert).
+- Scanart in drei Segmenten wählen: **Einzug einseitig**, **Einzug beidseitig** (nur wenn der Scanner Duplex kann) oder **Glas**; über das Zahnrad Auflösung, Farbe, Format und Leerseiten **für den nächsten Scan** (wird im Browser gemerkt, die Integrationsoptionen bleiben unverändert). Die Punkte an den Einzug-Segmenten zeigen den Zustand des Einzugs; meldet er etwas anderes als „geladen“, steht es zusätzlich als Text darunter.
 - Zeigt Status, laufende Seitenzahl, Einzugsstatus, den Stapel mit Restzeit, das Ergebnis mit Link zu Paperless und Fehlermeldungen. Farben und Schrift folgen dem Theme.
 - **Drucker nicht erreichbar:** Antwortet der Drucker auf zwei Statusabfragen in Folge (alle 30 s) nicht, zeigt die Karte „Offline“ mit einem Hinweis. Der Scan-Knopf bleibt aktiv, denn ein Drucker im Standby wird beim Scan geweckt. Meldet der Drucker selbst einen Fehler (`Stopped`/`Down`), steht das ebenfalls dort. Während eines laufenden Scans wird nie gewarnt, weil der Drucker dann Abfragen oft verzögert beantwortet. Die Angaben stehen als Attribute `printer_online` und `printer_state` am Status-Sensor und lassen sich für Automationen nutzen.
 - Optional: `name` (Titel) und `config_entry` (bei mehreren Scannern).
