@@ -12,13 +12,13 @@ const CARD_VERSION = "0.8.0";
 const T = {
   de: {
     ready: "Bereit", running: "Läuft", batch: "Stapel", done: "Fertig", queued: "Wartet", error: "Fehler", unavailable: "Nicht verfügbar", offline: "Offline",
-    platen: "Glas", adf: "Einzug", loaded: "Geladen", empty: "Leer", processing: "Arbeitet", jam: "Papierstau",
+    platen: "Flachbett", adf: "Einzug", loaded: "Geladen", empty: "Leer", processing: "Arbeitet", jam: "Papierstau",
     cover_open: "Abdeckung offen", feeder_error: "Fehler",
     simplex: "einseitig", duplex_lc: "beidseitig", feeder_reports: "Einzug meldet:", scan_glass: "Seite scannen", scan_adf: "Einzug scannen", scan_adf_duplex: "Einzug scannen · beidseitig",
     scanning: "Scannt …", retry: "Erneut versuchen", add_page: "+ Weitere Seite", send: "Senden", discard: "Stapel verwerfen",
     last_scan: "Letzter Scan", pages_n: (n) => `${n} ${n === 1 ? "Seite" : "Seiten"}`,
     pages_scanned: "Seiten gescannt", in_batch: (n) => `${n} ${n === 1 ? "Seite" : "Seiten"} im Stapel`,
-    batch_hint: "Noch eine Seite? Auf das Glas legen.", auto_send: (m) => `Wird in ${m} min automatisch gesendet`,
+    batch_hint: "Noch eine Seite? Auf das Flachbett legen.", auto_send: (m) => `Wird in ${m} min automatisch gesendet`,
     reminder: (m) => `Erinnerung in ${m} min`, auto_send_soon: "Wird gleich automatisch gesendet",
     to_paperless: (n) => `${n} → Paperless`, to_file: (n) => `${n} → Datei`, doc: (id) => `Dokument #${id}`,
     blank_removed: (n) => `${n} ${n === 1 ? "Leerseite" : "Leerseiten"} entfernt`, open_paperless: "In Paperless öffnen ↗",
@@ -33,13 +33,13 @@ const T = {
   },
   en: {
     ready: "Ready", running: "Running", batch: "Batch", done: "Done", queued: "Waiting", error: "Error", unavailable: "Unavailable", offline: "Offline",
-    platen: "Glass", adf: "Feeder", loaded: "Loaded", empty: "Empty", processing: "Busy", jam: "Jam",
+    platen: "Flatbed", adf: "Feeder", loaded: "Loaded", empty: "Empty", processing: "Busy", jam: "Jam",
     cover_open: "Cover open", feeder_error: "Error",
     simplex: "one-sided", duplex_lc: "two-sided", feeder_reports: "Feeder reports:", scan_glass: "Scan page", scan_adf: "Scan feeder", scan_adf_duplex: "Scan feeder · two-sided",
     scanning: "Scanning …", retry: "Try again", add_page: "+ Another page", send: "Send", discard: "Discard batch",
     last_scan: "Last scan", pages_n: (n) => `${n} ${n === 1 ? "page" : "pages"}`,
     pages_scanned: "pages scanned", in_batch: (n) => `${n} ${n === 1 ? "page" : "pages"} in the batch`,
-    batch_hint: "Another page? Put it on the glass.", auto_send: (m) => `Sent automatically in ${m} min`,
+    batch_hint: "Another page? Put it on the flatbed.", auto_send: (m) => `Sent automatically in ${m} min`,
     reminder: (m) => `Reminder in ${m} min`, auto_send_soon: "Will be sent automatically soon",
     to_paperless: (n) => `${n} → Paperless`, to_file: (n) => `${n} → file`, doc: (id) => `Document #${id}`,
     blank_removed: (n) => `${n} blank ${n === 1 ? "page" : "pages"} removed`, open_paperless: "Open in Paperless ↗",
@@ -396,6 +396,6 @@ class HaAirscanCard extends HTMLElement {
 if (!customElements.get("ha-airscan-card")) customElements.define("ha-airscan-card", HaAirscanCard);
 window.customCards = window.customCards || [];
 if (!window.customCards.some((c) => c.type === "ha-airscan-card")) {
-  window.customCards.push({ type: "ha-airscan-card", name: "Scan to Paperless", description: "Scan via eSCL (glass, feeder, duplex, batch) and send to Paperless-ngx.", preview: false });
+  window.customCards.push({ type: "ha-airscan-card", name: "Scan to Paperless", description: "Scan via eSCL (flatbed, feeder, duplex, batch) and send to Paperless-ngx.", preview: false });
 }
 console.info(`%c AIRSCAN-CARD %c ${CARD_VERSION} `, "background:#0773BB;color:#fff;border-radius:3px 0 0 3px", "background:#eee;color:#333;border-radius:0 3px 3px 0");

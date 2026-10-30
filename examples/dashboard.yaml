@@ -33,7 +33,7 @@ cards:
     cards:
       - type: tile
         entity: button.epson_et_3950_series_scan_flachbett
-        name: Glas (zum Stapel)
+        name: Flachbett (zum Stapel)
         icon: mdi:file-document-outline
         vertical: true
         tap_action:
@@ -62,7 +62,7 @@ cards:
           target:
             entity_id: button.epson_et_3950_series_scan_einzug_beidseitig
 
-  # Nach "Glas" liegt die Seite im Stapel: weitere Seiten mit "Glas" ergänzen,
+  # Nach "Flachbett" liegt die Seite im Stapel: weitere Seiten mit "Flachbett" ergänzen,
   # dann alles als ein PDF senden oder verwerfen.
   - type: grid
     columns: 2
