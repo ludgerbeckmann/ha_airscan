@@ -32,14 +32,16 @@ const assert = require("assert");
     const tick = () => new Promise((r) => setTimeout(r, 0));
 
     const c = mount({ status: "idle" }, document.body);      // default source = feeder
-    out.defaultFeeder = root(c).querySelector('[data-act="src"][data-v="adf"]').classList.contains("on");
-    out.feederFirst = root(c).querySelector('.seg button').dataset.v;
+    out.defaultFeeder = root(c).querySelector('[data-act="mode"][data-v="adf1"]').classList.contains("on");
+    out.modes = [...root(c).querySelectorAll('.seg button')].map((b) => b.dataset.v);
+    const rowTops = (card) => [...new Set([...root(card).querySelectorAll('.opts > *')].map((e) => { const b = e.getBoundingClientRect(); return Math.round((b.top + b.height / 2) / 4); }))].length;   // vertical centres, 4px tolerance
+    out.optsRows = rowTops(c);
     out.simplex = c._hass.calls.length === 0 && (click(c, '[data-act="scan"]'), c._hass.calls.slice());
     c._hass.calls.length = 0;
-    click(c, '[data-act="src"][data-v="platen"]'); await tick();
+    click(c, '[data-act="mode"][data-v="platen"]'); await tick();
     click(c, '[data-act="scan"]'); out.glass = c._hass.calls.slice();
-    click(c, '[data-act="src"][data-v="adf"]'); await tick();
-    click(c, '[data-act="duplex"]'); await tick();
+    click(c, '[data-act="mode"][data-v="adf2"]'); await tick();
+    out.duplexOn = root(c).querySelector('[data-act="mode"][data-v="adf2"]').classList.contains("on");
     click(c, '[data-act="scan"]'); out.adfDuplex = c._hass.calls.slice();
     click(c, '[data-act="gear"]'); await tick();
     const sel = root(c).querySelector('[data-set="resolution"]'); sel.value = "600"; sel.dispatchEvent(new Event("change", { bubbles: true })); await tick();
@@ -50,7 +52,7 @@ const assert = require("assert");
     const b = mount({ status: "batch", attrs: { batch_pages: 2 } }, document.body);
     click(b, '[data-act="add"]'); click(b, '[data-act="send"]'); click(b, '[data-act="discard"]');
     out.batch = b._hass.calls.slice();
-    out.batchAdfDisabled = root(b).querySelector('[data-act="src"][data-v="adf"]').disabled;
+    out.batchAdfDisabled = root(b).querySelector('[data-act="mode"][data-v="adf1"]').disabled && root(b).querySelector('[data-act="mode"][data-v="adf2"]').disabled;
 
     const r = mount({ status: "running" }, document.body);
     out.runningDisabled = root(r).querySelector(".primary").disabled;
@@ -93,7 +95,9 @@ const assert = require("assert");
   });
 
   assert.strictEqual(result.defaultFeeder, true, "feeder must be the default");
-  assert.strictEqual(result.feederFirst, "adf", "feeder button must be on the left");
+  assert.deepStrictEqual(result.modes, ["adf1", "adf2", "platen"], "feeder one-sided, feeder two-sided, glass");
+  assert.strictEqual(result.optsRows, 1, "the options must fit in one row");
+  assert.strictEqual(result.duplexOn, true);
   assert.deepStrictEqual(result.simplex, [["ha_airscan", "scan", { source: "adf", duplex: false }]]);
   assert.deepStrictEqual(result.glass, [["ha_airscan", "batch_add", {}]]);
   assert.deepStrictEqual(result.adfDuplex[1], ["ha_airscan", "scan", { source: "adf", duplex: true }]);
