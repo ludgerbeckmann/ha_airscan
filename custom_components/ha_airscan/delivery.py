@@ -30,8 +30,9 @@ STARTUP_DELAY = 30
 class Outbox:
     """Persistent queue of PDFs waiting for Paperless, with automatic retries."""
 
-    def __init__(self, hass: HomeAssistant, path: Path, notify: Callable[[], None]) -> None:
+    def __init__(self, hass: HomeAssistant, path: Path, notify: Callable[[], None], entry_id: str = "") -> None:
         self._hass = hass
+        self._entry_id = entry_id
         self._store = OutboxStore(path)
         self._notify = notify            # tells the entities that the queue changed
         self._lock = asyncio.Lock()
@@ -137,7 +138,7 @@ class Outbox:
                 self.items.remove(item)
                 self._hass.bus.async_fire(
                     EVENT_QUEUE_DELIVERED,
-                    {"title": item.get("title"), "document_id": info.get("document_id")},
+                    {"entry_id": self._entry_id, "title": item.get("title"), "document_id": info.get("document_id")},
                 )
             pending = len(self.pending)
             if pending:

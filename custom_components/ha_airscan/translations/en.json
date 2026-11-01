@@ -49,6 +49,13 @@
   "options": {
     "step": {
       "init": {
+        "title": "Options",
+        "menu_options": {
+          "settings": "Scan & Paperless",
+          "notifications": "Notifications"
+        }
+      },
+      "settings": {
         "title": "Paperless-ngx",
         "description": "Optional: leave empty to skip Paperless. Tags, correspondent and document type are numeric Paperless IDs (tags comma-separated).\n\n{error_detail}",
         "data": {
@@ -67,12 +74,31 @@
           "page_size": "Paper size",
           "adf_align": "Sheet position in the feeder"
         }
+      },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Where to send which messages? Nothing is sent without a target. \"Send test message\" checks the targets right away.\n\nWebhook for Paperless-ngx (workflow action \"Webhook\", method POST, JSON): `{webhook_url}`",
+        "data": {
+          "notify_services": "Targets (notify services)",
+          "notify_entities": "Targets (notify entities)",
+          "notify_scan_types": "Scan messages",
+          "paperless_webhook": "Enable Paperless webhook",
+          "paperless_webhook_id": "Webhook ID",
+          "notify_paperless_types": "Paperless messages",
+          "send_test": "Send test message"
+        },
+        "data_description": {
+          "notify_services": "e.g. mobile_app_iphone_ludger. Several are possible; \"Benachrichtigung in Home Assistant\" shows in the sidebar.",
+          "paperless_webhook_id": "Letters, digits, _ and - only. Do not reuse the ID of an existing automation that is still switched on."
+        }
       }
     },
     "error": {
       "cannot_connect": "Failed to connect",
       "invalid_auth": "Invalid token",
-      "paperless_incomplete": "URL and token must both be set"
+      "paperless_incomplete": "URL and token must both be set",
+      "invalid_webhook_id": "Invalid webhook ID (6–64 characters: letters, digits, _ and -)",
+      "test_failed": "At least one target did not accept the test message (see the log)"
     }
   },
   "entity": {
@@ -164,6 +190,22 @@
         "left": "Left",
         "center": "Center",
         "right": "Right"
+      }
+    },
+    "notify_scan_types": {
+      "options": {
+        "scan_done": "Scan finished",
+        "scan_error": "Scan failed",
+        "queued": "Scan waiting for Paperless",
+        "queue_delivered": "Queue delivered",
+        "batch_stale": "Batch forgotten (with send/discard buttons)",
+        "printer_offline": "Printer not reachable"
+      }
+    },
+    "notify_paperless_types": {
+      "options": {
+        "neu": "New documents",
+        "frist": "Due dates"
       }
     }
   },

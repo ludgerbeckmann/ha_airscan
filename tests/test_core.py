@@ -574,3 +574,181 @@ def test_delivery_queue(monkeypatch, tmp_path):
         assert (await box2.async_deliver())["remaining"] == 1
 
     asyncio.run(go())
+
+
+# --- notifications ----------------------------------------------------------------
+
+
+def test_notification_texts():
+    nm = _load("notify_messages")
+    done = nm.scan_message("scan_done", {"pages": 6, "destination": "paperless", "document_id": 123, "blank_removed": 2})
+    assert (done["title"], done["message"]) == ("Scan fertig", "6 Seiten → Paperless (Dokument #123), 2 Leerseite(n) entfernt")
+    assert nm.scan_message("scan_done", {"pages": 1, "destination": "file"})["message"] == "1 Seite → Datei"
+    assert nm.scan_message("scan_done", {"pages": 2, "destination": "paperless", "document_id": 5}, "en")["message"] == "2 pages → Paperless (document #5)"
+    err = nm.scan_message("scan_error", {"detail": "Scan fehlgeschlagen: Scanner is busy"})
+    assert err["message"] == "Scan fehlgeschlagen: Scanner is busy" and err["time_sensitive"]
+    queued = nm.scan_message("queued", {"pages": 3, "queue_error": "ClientConnectorError: no route"})
+    assert "Paperless nicht erreichbar" in queued["message"] and "ClientConnectorError" in queued["message"]
+    stale = nm.scan_message("batch_stale", {"batch_pages": 3})
+    assert stale["actions"] and "3 Seiten" in stale["message"]
+    assert nm.scan_message("printer_offline", {})["message"].startswith("Ist der Drucker eingeschaltet")
+    assert nm.action_labels("de") == ("Senden", "Verwerfen")
+
+
+def test_paperless_webhook_matches_the_old_automation():
+    nm = _load("notify_messages")
+    # exactly the fields of the existing automation
+    doc = nm.normalize_paperless({"typ": "frist", "korrespondent": "Stadtwerke", "titel": "Rechnung 10/2026",
+                                  "dokumenttyp": "Rechnung", "belegdatum": "2026-10-20", "url": "http://paperless/documents/7/"})
+    msg = nm.paperless_message(doc)
+    assert msg == {"title": "Paperless ngx: Frist", "message": "Stadtwerke: Rechnung 10/2026 (Rechnung, 2026-10-20)",
+                   "tag": "Paperless-Frist", "url": "http://paperless/documents/7/", "time_sensitive": True, "actions": False}
+    new = nm.paperless_message(nm.normalize_paperless({}))                 # all defaults
+    assert (new["title"], new["message"], new["tag"], new["time_sensitive"]) == ("Paperless ngx: Neues Dokument", "unbekannt: ohne Titel", "Paperless", False)
+    assert nm.paperless_message(nm.normalize_paperless({"titel": "X", "dokumenttyp": "Brief"}))["message"] == "unbekannt: X (Brief)"
+    # English field names of a default Paperless workflow work as well
+    en = nm.normalize_paperless({"type": "due", "correspondent": "ACME", "title": "Invoice", "document_type": "Bill"})
+    assert (en["typ"], en["korrespondent"], en["titel"], en["dokumenttyp"]) == ("frist", "ACME", "Invoice", "Bill")
+
+
+def test_notifier(monkeypatch):
+    from types import SimpleNamespace
+
+    class HAError(Exception):
+        pass
+
+    def mod(name, **attrs):
+        m = _types.ModuleType(name)
+        m.__dict__.update(attrs)
+        monkeypatch.setitem(sys.modules, name, m)
+
+    class Event:
+        def __init__(self, data):
+            self.data = data
+
+    mod("homeassistant"); mod("homeassistant.helpers")
+    mod("homeassistant.core", Event=Event, HomeAssistant=object, callback=lambda f: f)
+    mod("homeassistant.exceptions", HomeAssistantError=HAError)
+    scan_calls = []
+
+    async def fake_send(hass, entry):
+        scan_calls.append(("send", entry.entry_id))
+
+    async def fake_discard(hass, entry):
+        scan_calls.append(("discard", entry.entry_id))
+
+    monkeypatch.setitem(sys.modules, "airscan_pkg.scan", _types.SimpleNamespace(async_batch_send=fake_send, async_batch_discard=fake_discard))
+    notifications = _load("notifications")
+
+    class Bus:
+        def __init__(self):
+            self.listeners = []
+
+        def async_listen(self, event_type, handler):
+            self.listeners.append((event_type, handler))
+            return lambda: None
+
+    class Services:
+        def __init__(self):
+            self.calls, self.broken = [], set()
+
+        async def async_call(self, domain, service, data, blocking=False):
+            if service in self.broken:
+                raise HAError("boom")
+            self.calls.append((domain, service, data))
+
+    class Hass:
+        def __init__(self):
+            self.bus, self.services, self.tasks = Bus(), Services(), []
+            self.config = SimpleNamespace(language="de")
+
+        def async_create_task(self, coro):
+            self.tasks.append(coro)
+
+    async def go():
+        hass = Hass()
+        entry = SimpleNamespace(entry_id="E1", options={
+            "notify_services": ["mobile_app_iphone", "telegram_me", "persistent_notification", "broken_one"],
+            "notify_entities": ["notify.ntfy"],
+            "notify_scan_types": ["scan_error", "queued", "batch_stale"],
+            "notify_paperless_types": ["frist"],
+        }, async_on_unload=lambda fn: None)
+        hass.services.broken.add("broken_one")
+        n = notifications.Notifier(hass, entry)
+        n.async_start()
+        assert {t for t, _ in hass.bus.listeners} >= {"ha_airscan_scan_finished", "ha_airscan_scan_failed", "ha_airscan_queue_delivered",
+                                                         "ha_airscan_batch_stale", "ha_airscan_printer_offline", "mobile_app_notification_action"}
+
+        def fire(event_type, data):
+            for t, handler in hass.bus.listeners:
+                if t == event_type:
+                    result = handler(Event(data))
+                    if asyncio.iscoroutine(result):
+                        hass.tasks.append(result)
+
+        async def settle():
+            while hass.tasks:
+                await hass.tasks.pop(0)
+
+        # a failed scan reaches every target in the right shape; a broken target does not block the others
+        fire("ha_airscan_scan_failed", {"entry_id": "E1", "detail": "Scan fehlgeschlagen: busy"})
+        await settle()
+        by_service = {c[1]: c for c in hass.services.calls}
+        mobile = by_service["mobile_app_iphone"][2]
+        assert mobile["title"] == "Scan fehlgeschlagen" and mobile["data"]["push"] == {"interruption-level": "time-sensitive"}
+        assert "data" not in by_service["telegram_me"][2], "only the app understands the extra fields"
+        assert by_service["create"][0] == "persistent_notification" and by_service["create"][2]["message"].startswith("Scan fehlgeschlagen")
+        assert by_service["send_message"][2]["entity_id"] == "notify.ntfy"
+        assert "broken_one" not in by_service
+        hass.services.calls.clear()
+
+        # types that are not selected, other scanners' events and a missing target stay silent
+        fire("ha_airscan_scan_finished", {"entry_id": "E1", "pages": 2, "destination": "paperless"})   # scan_done not selected
+        fire("ha_airscan_scan_failed", {"entry_id": "OTHER", "detail": "x"})
+        await settle()
+        assert hass.services.calls == []
+        # queued is the same event with queued=True
+        fire("ha_airscan_scan_finished", {"entry_id": "E1", "pages": 2, "queued": True, "queue_error": "down"})
+        await settle()
+        assert any("Paperless nicht erreichbar" in c[2]["message"] for c in hass.services.calls)
+        hass.services.calls.clear()
+
+        # forgotten batch: buttons only for the app, and they work
+        fire("ha_airscan_batch_stale", {"entry_id": "E1", "pages": 3})
+        await settle()
+        actions = {c[1]: c for c in hass.services.calls}["mobile_app_iphone"][2]["data"]["actions"]
+        assert [a["action"] for a in actions] == ["HA_AIRSCAN_SEND:E1", "HA_AIRSCAN_DISCARD:E1"]
+        fire("mobile_app_notification_action", {"action": "HA_AIRSCAN_SEND:E1"})
+        fire("mobile_app_notification_action", {"action": "HA_AIRSCAN_DISCARD:E1"})
+        fire("mobile_app_notification_action", {"action": "HA_AIRSCAN_SEND:OTHER"})
+        await settle()
+        assert scan_calls == [("send", "E1"), ("discard", "E1")]
+        hass.services.calls.clear()
+
+        # Paperless webhook: only the selected types, bad input is rejected
+        class Req:
+            def __init__(self, payload=None, bad=False):
+                self._p, self._bad = payload, bad
+
+            async def json(self):
+                if self._bad:
+                    raise ValueError
+                return self._p
+
+        r = await n.async_handle_webhook(hass, "id", Req({"typ": "neu", "titel": "A"}))
+        assert r.status == 200 and hass.services.calls == []                    # "neu" is not selected
+        r = await n.async_handle_webhook(hass, "id", Req({"typ": "frist", "korrespondent": "Bank", "titel": "Mahnung", "url": "http://p/1"}))
+        assert r.status == 200
+        mobile = {c[1]: c for c in hass.services.calls}["mobile_app_iphone"][2]
+        assert mobile["title"] == "Paperless ngx: Frist" and mobile["data"]["url"] == "http://p/1" and mobile["data"]["clickAction"] == "http://p/1"
+        assert (await n.async_handle_webhook(hass, "id", Req(bad=True))).status == 400
+        assert (await n.async_handle_webhook(hass, "id", Req(["not", "a", "dict"]))).status == 400
+
+        # no targets at all: silent
+        entry.options = {"notify_scan_types": ["scan_error"]}
+        hass.services.calls.clear()
+        fire("ha_airscan_scan_failed", {"entry_id": "E1", "detail": "x"})
+        await settle()
+        assert hass.services.calls == []
+
+    asyncio.run(go())

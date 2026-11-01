@@ -49,6 +49,13 @@
   "options": {
     "step": {
       "init": {
+        "title": "Optionen",
+        "menu_options": {
+          "settings": "Scan & Paperless",
+          "notifications": "Benachrichtigungen"
+        }
+      },
+      "settings": {
         "title": "Paperless-ngx",
         "description": "Optional: leer lassen, um Paperless zu überspringen. Tags, Korrespondent und Dokumenttyp als numerische Paperless-IDs (Tags kommagetrennt).\n\n{error_detail}",
         "data": {
@@ -67,12 +74,31 @@
           "page_size": "Papierformat",
           "adf_align": "Papierlage im Einzug"
         }
+      },
+      "notifications": {
+        "title": "Benachrichtigungen",
+        "description": "Wohin und welche Meldungen? Ohne Ziel wird nichts gesendet. „Testnachricht senden“ prüft die Ziele sofort.\n\nWebhook für Paperless-ngx (Workflow-Aktion „Webhook“, Methode POST, JSON): `{webhook_url}`",
+        "data": {
+          "notify_services": "Ziele (Benachrichtigungsdienste)",
+          "notify_entities": "Ziele (Benachrichtigungs-Entitäten)",
+          "notify_scan_types": "Scan-Meldungen",
+          "paperless_webhook": "Paperless-Webhook aktivieren",
+          "paperless_webhook_id": "Webhook-ID",
+          "notify_paperless_types": "Paperless-Meldungen",
+          "send_test": "Testnachricht senden"
+        },
+        "data_description": {
+          "notify_services": "z. B. mobile_app_iphone_ludger. Auch mehrere; „Benachrichtigung in Home Assistant“ erscheint in der Seitenleiste.",
+          "paperless_webhook_id": "Nur Buchstaben, Ziffern, _ und -. Nicht dieselbe ID wie eine bestehende Automation verwenden, die erst deaktiviert werden muss."
+        }
       }
     },
     "error": {
       "cannot_connect": "Verbindung fehlgeschlagen",
       "invalid_auth": "Token ungültig",
-      "paperless_incomplete": "URL und Token müssen beide angegeben werden"
+      "paperless_incomplete": "URL und Token müssen beide angegeben werden",
+      "invalid_webhook_id": "Ungültige Webhook-ID (6–64 Zeichen: Buchstaben, Ziffern, _ und -)",
+      "test_failed": "Mindestens ein Ziel hat die Testnachricht nicht angenommen (Details im Log)"
     }
   },
   "entity": {
@@ -164,6 +190,22 @@
         "left": "Links",
         "center": "Mitte",
         "right": "Rechts"
+      }
+    },
+    "notify_scan_types": {
+      "options": {
+        "scan_done": "Scan fertig",
+        "scan_error": "Scan fehlgeschlagen",
+        "queued": "Scan wartet auf Paperless",
+        "queue_delivered": "Warteschlange zugestellt",
+        "batch_stale": "Stapel vergessen (mit Senden/Verwerfen-Knöpfen)",
+        "printer_offline": "Drucker nicht erreichbar"
+      }
+    },
+    "notify_paperless_types": {
+      "options": {
+        "neu": "Neue Dokumente",
+        "frist": "Fristen"
       }
     }
   },

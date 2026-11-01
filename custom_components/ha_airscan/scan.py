@@ -31,6 +31,7 @@ from .const import (
     DEFAULT_PAGE_SIZE,
     DEFAULT_RESOLUTION,
     EVENT_BATCH_STALE,
+    EVENT_SCAN_FAILED,
     EVENT_SCAN_FINISHED,
 )
 from .blank import DEFAULT_INK_PERCENT, filter_blank
@@ -304,10 +305,12 @@ def _finish(hass: HomeAssistant, entry: AirscanConfigEntry, result: dict) -> Non
     hass.bus.async_fire(EVENT_SCAN_FINISHED, {"entry_id": entry.entry_id, **result})
 
 
-def _fail(data: AirscanData, err: Exception) -> HomeAssistantError:
+def _fail(hass: HomeAssistant, entry: AirscanConfigEntry, err: Exception) -> HomeAssistantError:
+    data = entry.runtime_data
     msg = f"Scan fehlgeschlagen: {err}" if isinstance(err, EsclError) else str(err)
     data.tracker.update("error", msg)
     _LOGGER.error(msg)
+    hass.bus.async_fire(EVENT_SCAN_FAILED, {"entry_id": entry.entry_id, "detail": msg})
     return err if isinstance(err, HomeAssistantError) else HomeAssistantError(msg)
 
 
@@ -371,7 +374,7 @@ async def async_scan(
             result["blank_removed"] = removed
             result["source"] = "adf_duplex" if duplex else source
         except (EsclError, HomeAssistantError) as err:
-            raise _fail(data, err) from err
+            raise _fail(hass, entry, err) from err
     _finish(hass, entry, result)
     await data.coordinator.async_request_refresh()
     return result
@@ -443,11 +446,11 @@ async def async_batch_add(
                 page_size=page_size or entry.options.get(CONF_PAGE_SIZE, DEFAULT_PAGE_SIZE),
             )
         except EsclError as err:
-            error = _fail(data, err)
+            error = _fail(hass, entry, err)
             _arm_stale_timer(hass, entry)
             raise error from err
         if sum(map(len, data.tracker.batch)) + sum(map(len, pages)) > MAX_BATCH_BYTES:
-            error = _fail(data, HomeAssistantError("Stapel zu groß (Limit 512 MiB) – bitte senden"))
+            error = _fail(hass, entry, HomeAssistantError("Stapel zu groß (Limit 512 MiB) – bitte senden"))
             _arm_stale_timer(hass, entry)
             raise error
         data.tracker.batch.extend(pages)
@@ -485,7 +488,7 @@ async def async_batch_send(
                 correspondent=correspondent, document_type=document_type, directory=directory,
             )
         except HomeAssistantError as err:
-            error = _fail(data, err)
+            error = _fail(hass, entry, err)
             _arm_stale_timer(hass, entry)  # batch is kept for another try
             raise error from err
         data.tracker.batch.clear()
