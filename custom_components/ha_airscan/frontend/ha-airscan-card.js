@@ -14,7 +14,7 @@ const T = {
     ready: "Bereit", running: "Läuft", batch: "Stapel", done: "Fertig", queued: "Wartet", error: "Fehler", unavailable: "Nicht verfügbar", offline: "Offline",
     platen: "Flachbett", adf: "Einzug", loaded: "Geladen", empty: "Leer", processing: "Arbeitet", jam: "Papierstau",
     cover_open: "Abdeckung offen", feeder_error: "Fehler",
-    simplex: "einseitig", duplex_lc: "beidseitig", feeder_reports: "Einzug meldet:", scan_glass: "Seite scannen", scan_adf: "Einzug scannen", scan_adf_duplex: "Einzug scannen · beidseitig",
+    simplex: "einseitig", duplex_lc: "beidseitig", scan: "Scannen",
     scanning: "Scannt …", retry: "Erneut versuchen", add_page: "+ Weitere Seite", send: "Senden", discard: "Stapel verwerfen",
     last_scan: "Letzter Scan", pages_n: (n) => `${n} ${n === 1 ? "Seite" : "Seiten"}`,
     pages_scanned: "Seiten gescannt", in_batch: (n) => `${n} ${n === 1 ? "Seite" : "Seiten"} im Stapel`,
@@ -35,7 +35,7 @@ const T = {
     ready: "Ready", running: "Running", batch: "Batch", done: "Done", queued: "Waiting", error: "Error", unavailable: "Unavailable", offline: "Offline",
     platen: "Flatbed", adf: "Feeder", loaded: "Loaded", empty: "Empty", processing: "Busy", jam: "Jam",
     cover_open: "Cover open", feeder_error: "Error",
-    simplex: "one-sided", duplex_lc: "two-sided", feeder_reports: "Feeder reports:", scan_glass: "Scan page", scan_adf: "Scan feeder", scan_adf_duplex: "Scan feeder · two-sided",
+    simplex: "one-sided", duplex_lc: "two-sided", scan: "Scan",
     scanning: "Scanning …", retry: "Try again", add_page: "+ Another page", send: "Send", discard: "Discard batch",
     last_scan: "Last scan", pages_n: (n) => `${n} ${n === 1 ? "page" : "pages"}`,
     pages_scanned: "pages scanned", in_batch: (n) => `${n} ${n === 1 ? "page" : "pages"} in the batch`,
@@ -69,9 +69,14 @@ ha-card{color:var(--primary-text-color)}
 .logo{width:44px;height:44px;flex:none;border-radius:12px;background:var(--secondary-background-color);display:grid;place-items:center}
 .logo svg{width:30px;height:30px}
 .t{flex:1;min-width:0}
-.name{font-weight:600;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.name{font-weight:600;font-size:15px;line-height:1.25;overflow-wrap:anywhere}
 .sub{font-size:12.5px;color:var(--secondary-text-color);margin-top:2px;line-height:1.3}
 .chip{flex:none;font-size:12px;font-weight:600;padding:5px 11px;border-radius:99px;white-space:nowrap}
+.chips{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.chip.feeder{font-size:11.5px;padding:3px 9px;background:var(--secondary-background-color);color:var(--secondary-text-color)}
+.chip.feeder.loaded{background:color-mix(in srgb,var(--success-color,#15a850) 18%,transparent);color:var(--success-color,#15a850)}
+.chip.feeder.processing{background:color-mix(in srgb,var(--primary-color) 16%,transparent);color:var(--primary-color)}
+.chip.feeder.jam,.chip.feeder.cover_open,.chip.feeder.error{background:color-mix(in srgb,var(--error-color,#db4437) 16%,transparent);color:var(--error-color,#db4437)}
 .chip.ready,.chip.done{background:color-mix(in srgb,var(--success-color,#15a850) 18%,transparent);color:var(--success-color,#15a850)}
 .chip.running{background:color-mix(in srgb,var(--primary-color) 16%,transparent);color:var(--primary-color)}
 .chip.batch,.chip.queued{background:color-mix(in srgb,var(--warning-color,#ffa600) 22%,transparent);color:var(--warning-color,#b97700)}
@@ -92,13 +97,10 @@ ha-card{color:var(--primary-text-color)}
 .seg button.on{background:var(--card-background-color,#fff);color:var(--primary-text-color);box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .seg button[disabled]{opacity:.5;cursor:not-allowed}
 .seg small{font-weight:500;font-size:11.5px}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--disabled-text-color,#9e9e9e)}
-.dot.loaded{background:var(--success-color,#15a850)}.dot.empty,.dot.jam,.dot.cover_open,.dot.error{background:var(--error-color,#db4437)}.dot.processing{background:#29ACE2}
 .opts{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.feeder-hint{font-size:12.5px;margin:-4px 2px 0;color:var(--error-color,#db4437)}
 .pill{font-size:12px;background:var(--secondary-background-color);color:var(--secondary-text-color);padding:5px 9px;border-radius:99px;font-weight:500;white-space:nowrap}
 .pill.set{color:var(--primary-color)}
-.gear{margin-left:auto;border:0;background:transparent;color:var(--secondary-text-color);font-size:20px;cursor:pointer;padding:2px 6px}
+.gear{margin-left:auto;border:0;background:transparent;color:var(--secondary-text-color);font-size:28px;line-height:1;cursor:pointer;padding:0 4px}
 .gear.on{color:var(--primary-color)}
 .panel{background:var(--secondary-background-color);border-radius:12px;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
 .panel h4{grid-column:1/-1;margin:0;font-size:12.5px;font-weight:600;color:var(--secondary-text-color)}
@@ -294,6 +296,10 @@ class HaAirscanCard extends HTMLElement {
     let chipKey = status === "unavailable" ? "unavailable" : (STATUS_KEYS[status] || "ready");
     let chipCls = status === "idle" ? "ready" : (status === "unavailable" ? "unavailable" : status);
     if (offline && ["idle", "done", "error"].includes(status)) { chipKey = "offline"; chipCls = "unavailable"; }
+    // feeder state, shown next to the printer status (not when the printer is unreachable)
+    const feederState = caps.adf && feeder && FEEDER_KEYS[feeder.state] ? feeder.state : null;
+    const feederChip = feederState
+      ? `<span class="chip feeder ${esc(feederState)}">${esc(t.adf)}: ${esc(t[FEEDER_KEYS[feederState]])}</span>` : "";
     const beam = running ? "running" : status === "done" ? "done" : status === "error" ? "error" : "";
 
     // source selector
@@ -306,11 +312,8 @@ class HaAirscanCard extends HTMLElement {
     if (caps.platen) modes.push({ id: "platen", feeder: false, l1: t.platen, l2: "" });
     const modeNow = source === "platen" ? "platen" : (ui.duplex && caps.duplex ? "adf2" : "adf1");
     const modeButton = (m) => `<button data-act="mode" data-v="${m.id}" class="${modeNow === m.id ? "on" : ""}" ${running || (locked && m.feeder) ? "disabled" : ""} ${locked && m.feeder ? `title="${esc(t.batch_lock)}"` : ""}>
-        <span class="l1">${m.feeder && feederKey ? `<span class="dot ${esc(feeder.state)}" title="${esc(t[feederKey])}"></span>` : ""}${esc(m.l1)}</span>${m.l2 ? `<small>${esc(m.l2)}</small>` : ""}</button>`;
+        <span class="l1">${esc(m.l1)}</span>${m.l2 ? `<small>${esc(m.l2)}</small>` : ""}</button>`;
     const seg = modes.length > 1 ? `<div class="seg">${modes.map(modeButton).join("")}</div>` : "";
-    // the feeder state as text only when it needs attention (it can be stale after standby)
-    const feederHint = source === "adf" && feederKey && !running && !["loaded", "processing"].includes(feeder.state)
-      ? `<div class="feeder-hint">${esc(t.feeder_reports)} ${esc(t[feederKey])}</div>` : "";
 
     // middle part by status
     let middle = "";
@@ -380,14 +383,14 @@ class HaAirscanCard extends HTMLElement {
     else if (locked) actions = `<div class="row"><button class="secondary" data-act="add">${esc(t.add_page)}</button><button class="primary" data-act="send">${esc(t.send)}</button></div>
         <button class="link danger" data-act="discard">${esc(t.discard)}</button>`;
     else {
-      const label = status === "error" ? t.retry : source === "adf" ? (ui.duplex && caps.duplex ? t.scan_adf_duplex : t.scan_adf) : t.scan_glass;
+      const label = status === "error" ? t.retry : t.scan;
       actions = `<button class="primary" data-act="scan" ${status === "unavailable" ? "disabled" : ""}>${esc(label)}</button>`;
     }
 
     root.innerHTML = `<style>${STYLE}</style><ha-card><div class="body">
-      <div class="head"><div class="logo">${LOGO}</div><div class="t"><div class="name">${esc(name)}</div><div class="sub">${esc(sub)}</div></div><span class="chip ${chipCls}">${esc(t[chipKey])}</span></div>
+      <div class="head"><div class="logo">${LOGO}</div><div class="t"><div class="name">${esc(name)}</div><div class="sub">${esc(sub)}</div></div><div class="chips"><span class="chip ${chipCls}">${esc(t[chipKey])}</span>${feederChip}</div></div>
       <div class="beam ${beam}"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-      ${seg}${feederHint}${middle}${printerBox}${banner}${queueBox}${opts}${panel}${actions}
+      ${seg}${middle}${printerBox}${banner}${queueBox}${opts}${panel}${actions}
       ${this._toast ? `<div class="toast">${esc(this._toast)}</div>` : ""}
     </div></ha-card>`;
   }
