@@ -1,5 +1,5 @@
 {
   "name": "Scan to Paperless",
-  "homeassistant": "2024.8.0",
+  "homeassistant": "2024.11.0",
   "render_readme": true
 }

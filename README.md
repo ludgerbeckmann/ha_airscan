@@ -30,7 +30,7 @@ Scannt über das Netzwerk (eSCL/AirScan, z. B. Epson-Multifunktionsgeräte) und 
 | Sensor *Seiten* | Seiten des laufenden/letzten Jobs bzw. des offenen Stapels |
 | Sensor *Einzug* | `loaded`, `empty`, `processing` (während des Scans), `jam`, `cover_open`, `error` laut Drucker (`loaded`/`empty` kann nach Standby veraltet sein) |
 
-Services: `ha_airscan.scan`, `ha_airscan.batch_add`, `ha_airscan.batch_send`, `ha_airscan.batch_discard`, `ha_airscan.retry_queue`. Events: `ha_airscan_scan_finished`, `ha_airscan_batch_stale`, `ha_airscan_queue_delivered`.
+Services: `ha_airscan.scan`, `ha_airscan.batch_add`, `ha_airscan.batch_send`, `ha_airscan.batch_discard`, `ha_airscan.retry_queue`. Events: `ha_airscan_scan_finished`, `ha_airscan_scan_failed`, `ha_airscan_batch_stale`, `ha_airscan_queue_delivered`, `ha_airscan_printer_offline`.
 
 Fehler-Benachrichtigung per Automation auf den Statussensor:
 
@@ -69,6 +69,18 @@ entity: sensor.epson_et_3950_series_status   # der Status-Sensor des Scanners
 - **Drucker nicht erreichbar:** Antwortet der Drucker auf zwei Statusabfragen in Folge (alle 30 s) nicht, zeigt die Karte „Offline“ mit einem Hinweis. Der Scan-Knopf bleibt aktiv, denn ein Drucker im Standby wird beim Scan geweckt. Meldet der Drucker selbst einen Fehler (`Stopped`/`Down`), steht das ebenfalls dort. Während eines laufenden Scans wird nie gewarnt, weil der Drucker dann Abfragen oft verzögert beantwortet. Die Angaben stehen als Attribute `printer_online` und `printer_state` am Status-Sensor und lassen sich für Automationen nutzen.
 - Optional: `name` (Titel) und `config_entry` (bei mehreren Scannern).
 - Die Karte ruft nur die Services der Integration auf; ohne eigene Karte funktioniert weiterhin das Beispiel in [`examples/dashboard.yaml`](examples/dashboard.yaml) mit Standard-Karten.
+
+## Benachrichtigungen
+
+Einstellungen → Geräte & Dienste → Scan to Paperless → *Konfigurieren* → *Benachrichtigungen*. Ohne ein Ziel wird nichts gesendet.
+
+- **Ziele:** beliebig viele Benachrichtigungsdienste (z. B. `mobile_app_iphone_ludger`, Telegram), „Benachrichtigung in Home Assistant“ (Seitenleiste) und Benachrichtigungs-Entitäten (`notify.*`). Ein Ziel, das einmal nicht antwortet, hält die anderen nicht auf. Mit **„Testnachricht senden“** prüfst du die Ziele sofort.
+- **Scan-Meldungen** (einzeln wählbar): Scan fertig, Scan fehlgeschlagen, Scan wartet auf Paperless, Warteschlange zugestellt, Stapel vergessen, Drucker nicht erreichbar. Vorbelegt sind Fehler, Warteschlange, vergessener Stapel und Drucker offline.
+  - Die Meldung „Stapel vergessen“ hat in der Home-Assistant-App die Knöpfe **Senden** und **Verwerfen**, die direkt den Stapel verarbeiten.
+  - Nur die Home-Assistant-App bekommt die Zusatzfelder (Link, Priorität „zeitkritisch“, Knöpfe); andere Dienste bekommen nur Titel und Text.
+- **Paperless-Meldungen** (neue Dokumente, Fristen) über einen **Webhook**: Option einschalten, die angezeigte Adresse in Paperless-ngx bei einem Workflow als Aktion „Webhook“ eintragen (POST, JSON). Erkannt werden die Felder `typ` (`neu` oder `frist`), `korrespondent`, `titel`, `dokumenttyp`, `belegdatum` und `url`; auch die englischen Namen (`type`, `correspondent`, `title`, `document_type`) funktionieren. Der Webhook ist nur aus dem lokalen Netz erreichbar. Fristen kommen als „zeitkritisch“ an.
+
+**Eine bestehende Automation ablösen:** Hast du die Meldungen bisher mit einer Automation auf einen Webhook gebaut, trage dieselbe **Webhook-ID** (den hinteren Teil der Adresse `…/api/webhook/<ID>`) in den Optionen ein, nachdem du die Automation **ausgeschaltet** hast. Dann musst du in Paperless nichts ändern. Titel und Text entsprechen der Automation („Paperless ngx: Neues Dokument“ / „Paperless ngx: Frist“).
 
 ## Paperless
 

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import re
+import secrets
 from typing import Any
 
 import voluptuous as vol
@@ -10,6 +12,8 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.components import webhook
+from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
@@ -17,6 +21,15 @@ from .const import (
     COLOR_MODES,
     CONF_ADF_ALIGN,
     CONF_BATCH_AUTO_SEND,
+    CONF_NOTIFY_ENTITIES,
+    CONF_NOTIFY_PAPERLESS_TYPES,
+    CONF_NOTIFY_SCAN_TYPES,
+    CONF_NOTIFY_SERVICES,
+    CONF_PAPERLESS_WEBHOOK,
+    CONF_PAPERLESS_WEBHOOK_ID,
+    DEFAULT_NOTIFY_PAPERLESS_TYPES,
+    DEFAULT_NOTIFY_SCAN_TYPES,
+    PERSISTENT_NOTIFICATION,
     CONF_BATCH_TIMEOUT,
     CONF_BLANK_DETECTION,
     CONF_BLANK_THRESHOLD,
@@ -44,6 +57,8 @@ from .const import (
 )
 from .blank import DEFAULT_INK_PERCENT
 from .escl import EsclClient, EsclError
+from .notify_messages import PAPERLESS_TYPES, SCAN_TYPES
+from .notifications import async_send_test
 from .paperless import PaperlessAuthError, PaperlessClient, PaperlessError
 
 _LOGGER = logging.getLogger(__name__)
@@ -218,20 +233,108 @@ class AirscanConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
 
+def _notify_services(hass: HomeAssistant, current: list[str]) -> list[dict[str, str]]:
+    """notify.* services that exist right now (plus what is already selected)."""
+    services = hass.services.async_services_for_domain("notify")
+    names = sorted(s for s in services if s not in ("send_message", PERSISTENT_NOTIFICATION))
+    names += [c for c in current if c not in names and c != PERSISTENT_NOTIFICATION]
+    return [{"value": PERSISTENT_NOTIFICATION, "label": "Benachrichtigung in Home Assistant"}] + [
+        {"value": n, "label": n} for n in names
+    ]
+
+
+def _notify_schema(hass: HomeAssistant, d: dict[str, Any]) -> vol.Schema:
+    return vol.Schema(
+        {
+            vol.Optional(CONF_NOTIFY_SERVICES, default=d.get(CONF_NOTIFY_SERVICES, [])): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=_notify_services(hass, d.get(CONF_NOTIFY_SERVICES, [])),
+                    multiple=True, custom_value=True, mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            vol.Optional(CONF_NOTIFY_ENTITIES, default=d.get(CONF_NOTIFY_ENTITIES, [])): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="notify", multiple=True)
+            ),
+            vol.Optional(
+                CONF_NOTIFY_SCAN_TYPES, default=d.get(CONF_NOTIFY_SCAN_TYPES, DEFAULT_NOTIFY_SCAN_TYPES)
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=SCAN_TYPES, multiple=True, translation_key="notify_scan_types",
+                    mode=selector.SelectSelectorMode.LIST,
+                )
+            ),
+            vol.Optional(CONF_PAPERLESS_WEBHOOK, default=d.get(CONF_PAPERLESS_WEBHOOK, False)): bool,
+            vol.Optional(
+                CONF_PAPERLESS_WEBHOOK_ID,
+                default=d.get(CONF_PAPERLESS_WEBHOOK_ID) or f"paperless_{secrets.token_hex(8)}",
+            ): str,
+            vol.Optional(
+                CONF_NOTIFY_PAPERLESS_TYPES, default=d.get(CONF_NOTIFY_PAPERLESS_TYPES, DEFAULT_NOTIFY_PAPERLESS_TYPES)
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=PAPERLESS_TYPES, multiple=True, translation_key="notify_paperless_types",
+                    mode=selector.SelectSelectorMode.LIST,
+                )
+            ),
+            vol.Optional("send_test", default=False): bool,
+        }
+    )
+
+
+def _webhook_url(hass: HomeAssistant, webhook_id: str) -> str:
+    try:
+        return webhook.async_generate_url(hass, webhook_id, prefer_external=False)
+    except Exception:  # noqa: BLE001 - no internal/external URL configured
+        return f"/api/webhook/{webhook_id}"
+
+
 class AirscanOptionsFlow(OptionsFlow):
-    """Edit Paperless and scan defaults."""
+    """Options: scan/Paperless settings and notifications."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Options."""
+        """Menu."""
+        return self.async_show_menu(step_id="init", menu_options=["settings", "notifications"])
+
+    async def async_step_settings(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Paperless and scan defaults (merged into the other options)."""
         errors: dict[str, str] = {}
+        detail = ""
         if user_input is not None:
             error, detail = await _validate_paperless(self.hass, user_input)
             if not error:
-                return self.async_create_entry(data=user_input)
+                return self.async_create_entry(data={**self.config_entry.options, **user_input})
             errors["base"] = error
         return self.async_show_form(
-            step_id="init",
+            step_id="settings",
             data_schema=_options_schema(user_input or dict(self.config_entry.options)),
             errors=errors,
             description_placeholders={"error_detail": detail if errors else ""},
+        )
+
+    async def async_step_notifications(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Where to send which message."""
+        errors: dict[str, str] = {}
+        current = user_input or dict(self.config_entry.options)
+        if user_input is not None:
+            webhook_id = str(user_input.get(CONF_PAPERLESS_WEBHOOK_ID, "")).strip()
+            if user_input.get(CONF_PAPERLESS_WEBHOOK) and not re.fullmatch(r"[A-Za-z0-9_-]{6,64}", webhook_id):
+                errors[CONF_PAPERLESS_WEBHOOK_ID] = "invalid_webhook_id"
+            else:
+                options = {**self.config_entry.options, **{k: v for k, v in user_input.items() if k != "send_test"}}
+                options[CONF_PAPERLESS_WEBHOOK_ID] = webhook_id
+                if user_input.get("send_test"):
+                    failures = await async_send_test(self.hass, options, self.config_entry.entry_id)
+                    if failures:
+                        errors["base"] = "test_failed"
+                if not errors:
+                    return self.async_create_entry(data=options)
+        schema = _notify_schema(self.hass, current)
+        webhook_id = current.get(CONF_PAPERLESS_WEBHOOK_ID) or next(
+            (k.default() for k in schema.schema if k == CONF_PAPERLESS_WEBHOOK_ID), ""
+        )
+        return self.async_show_form(
+            step_id="notifications",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={"webhook_url": _webhook_url(self.hass, webhook_id)},
         )

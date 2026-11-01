@@ -10,17 +10,18 @@ from pathlib import Path
 
 import voluptuous as vol
 
+from homeassistant.components import webhook
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT, Platform
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
-from homeassistant.loader import async_get_integration
 from homeassistant.exceptions import ConfigEntryNotReady, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.loader import async_get_integration
 
 from .const import (
     COLOR_MODES,
@@ -30,7 +31,10 @@ from .const import (
     CONF_ROOT,
     CONF_TLS,
     DEFAULT_ROOT,
+    CONF_PAPERLESS_WEBHOOK,
+    CONF_PAPERLESS_WEBHOOK_ID,
     DESTINATIONS,
+    EVENT_PRINTER_OFFLINE,
     PAGE_SIZE_OPTIONS,
     DOMAIN,
     SERVICE_BATCH_ADD,
@@ -41,8 +45,9 @@ from .const import (
     SOURCES,
 )
 from .escl import Capabilities, EsclClient, EsclError, Status
-from .paperless import PaperlessClient
 from .delivery import STARTUP_DELAY, Outbox, async_retry_queue
+from .notifications import Notifier
+from .paperless import PaperlessClient
 from .scan import async_batch_add, async_batch_discard, async_batch_send, async_scan
 from .state import ScanTracker
 
@@ -133,6 +138,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirscanConfigEntry) -> b
             tracker.printer_failures += 1
             if tracker.printer_online != was_online:
                 tracker.update()            # the card shows "printer offline"
+                hass.bus.async_fire(EVENT_PRINTER_OFFLINE, {"entry_id": entry.entry_id, "detail": ""})
             raise UpdateFailed(str(err)) from err
         tracker.printer_failures = 0
         tracker.printer_state = status.state
@@ -160,7 +166,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirscanConfigEntry) -> b
             entry.options[CONF_PAPERLESS_TOKEN],
         )
 
-    outbox = Outbox(hass, Path(hass.config.path("ha_airscan_outbox", entry.entry_id)), tracker.update)
+    outbox = Outbox(hass, Path(hass.config.path("ha_airscan_outbox", entry.entry_id)), tracker.update, entry.entry_id)
     await outbox.async_load()
     data = AirscanData(client, capabilities, paperless, coordinator, asyncio.Lock(), tracker, outbox)
     outbox.data = data
@@ -168,6 +174,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirscanConfigEntry) -> b
     if outbox.pending:   # scans from before the restart are still waiting
         tracker.update("queued", f"{len(outbox.pending)} Scan(s) warten auf Paperless")
         outbox.async_schedule(STARTUP_DELAY)
+    notifier = Notifier(hass, entry)
+    notifier.async_start()
+    if entry.options.get(CONF_PAPERLESS_WEBHOOK) and (webhook_id := entry.options.get(CONF_PAPERLESS_WEBHOOK_ID)):
+        try:
+            webhook.async_register(
+                hass, DOMAIN, f"{entry.title} – Paperless", webhook_id,
+                notifier.async_handle_webhook, local_only=True, allowed_methods=["POST"],
+            )
+            entry.async_on_unload(lambda: webhook.async_unregister(hass, webhook_id))
+        except ValueError as err:   # id already used, e.g. by an automation that was not switched off yet
+            _LOGGER.error("Cannot register the Paperless webhook '%s': %s", webhook_id, err)
     entry.async_on_unload(entry.add_update_listener(_reload))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
