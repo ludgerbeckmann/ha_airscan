@@ -50,9 +50,10 @@ from .notifications import Notifier
 from .paperless import PaperlessClient
 from .scan import async_batch_add, async_batch_discard, async_batch_send, async_scan
 from .state import ScanTracker
+from .triggers import ButtonTriggers
 
 _LOGGER = logging.getLogger(__name__)
-PLATFORMS = [Platform.BUTTON, Platform.SENSOR]
+PLATFORMS = [Platform.BUTTON, Platform.SENSOR, Platform.SWITCH]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -176,6 +177,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirscanConfigEntry) -> b
         outbox.async_schedule(STARTUP_DELAY)
     notifier = Notifier(hass, entry)
     notifier.async_start()
+    ButtonTriggers(hass, entry).async_start()
     if entry.options.get(CONF_PAPERLESS_WEBHOOK) and (webhook_id := entry.options.get(CONF_PAPERLESS_WEBHOOK_ID)):
         try:
             webhook.async_register(

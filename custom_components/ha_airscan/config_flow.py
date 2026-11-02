@@ -21,6 +21,8 @@ from .const import (
     COLOR_MODES,
     CONF_ADF_ALIGN,
     CONF_BATCH_AUTO_SEND,
+    CONF_BUTTON_ENTITY,
+    CONF_BUTTON_MAP,
     CONF_NOTIFY_ENTITIES,
     CONF_NOTIFY_PAPERLESS_TYPES,
     CONF_NOTIFY_SCAN_TYPES,
@@ -56,6 +58,7 @@ from .const import (
     DOMAIN,
 )
 from .blank import DEFAULT_INK_PERCENT
+from .button_map import BUTTON_ACTIONS, duplicate_values, values_of
 from .escl import EsclClient, EsclError
 from .notify_messages import PAPERLESS_TYPES, SCAN_TYPES
 from .notifications import async_send_test
@@ -293,7 +296,7 @@ class AirscanOptionsFlow(OptionsFlow):
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Menu."""
-        return self.async_show_menu(step_id="init", menu_options=["settings", "notifications"])
+        return self.async_show_menu(step_id="init", menu_options=["settings", "notifications", "buttons"])
 
     async def async_step_settings(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Paperless and scan defaults (merged into the other options)."""
@@ -337,4 +340,62 @@ class AirscanOptionsFlow(OptionsFlow):
             data_schema=schema,
             errors=errors,
             description_placeholders={"webhook_url": _webhook_url(self.hass, webhook_id)},
+        )
+
+    async def async_step_buttons(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Step 1 of the external buttons: which entity reports the button presses?"""
+        options = dict(self.config_entry.options)
+        if user_input is not None:
+            entity = user_input.get(CONF_BUTTON_ENTITY)
+            if not entity:   # cleared: switch the feature off
+                options.pop(CONF_BUTTON_ENTITY, None)
+                options.pop(CONF_BUTTON_MAP, None)
+                return self.async_create_entry(data=options)
+            self._button_entity = entity
+            return await self.async_step_button_actions()
+        return self.async_show_form(
+            step_id="buttons",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_BUTTON_ENTITY, description={"suggested_value": options.get(CONF_BUTTON_ENTITY)}
+                    ): selector.EntitySelector(selector.EntitySelectorConfig(domain=["event", "sensor"]))
+                }
+            ),
+        )
+
+    async def async_step_button_actions(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Step 2: which value of the button starts which action?"""
+        entity = self._button_entity
+        state = self.hass.states.get(entity)
+        known = values_of(dict(state.attributes)) if state else []
+        saved = self.config_entry.options
+        previous = saved.get(CONF_BUTTON_MAP, {}) if saved.get(CONF_BUTTON_ENTITY) == entity else {}
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            mapping = {a: str(user_input.get(a) or "").strip() for a in BUTTON_ACTIONS}
+            if duplicate_values(mapping):
+                errors["base"] = "duplicate_button_value"
+            elif not any(mapping.values()):
+                errors["base"] = "no_button_mapping"
+            else:
+                return self.async_create_entry(
+                    data={**saved, CONF_BUTTON_ENTITY: entity, CONF_BUTTON_MAP: mapping}
+                )
+        shown = user_input or previous
+        schema = vol.Schema(
+            {
+                vol.Optional(a, description={"suggested_value": shown.get(a, "")}): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=known, custom_value=True, mode=selector.SelectSelectorMode.DROPDOWN
+                    )
+                )
+                for a in BUTTON_ACTIONS
+            }
+        )
+        return self.async_show_form(
+            step_id="button_actions",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={"entity": entity, "known": ", ".join(known) or "–"},
         )

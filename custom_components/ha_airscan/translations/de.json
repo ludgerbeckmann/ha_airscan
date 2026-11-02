@@ -52,7 +52,8 @@
         "title": "Optionen",
         "menu_options": {
           "settings": "Scan & Paperless",
-          "notifications": "Benachrichtigungen"
+          "notifications": "Benachrichtigungen",
+          "buttons": "Externe Taster"
         }
       },
       "settings": {
@@ -91,6 +92,28 @@
           "notify_services": "z. B. mobile_app_iphone_ludger. Auch mehrere; „Benachrichtigung in Home Assistant“ erscheint in der Seitenleiste.",
           "paperless_webhook_id": "Nur Buchstaben, Ziffern, _ und -. Nicht dieselbe ID wie eine bestehende Automation verwenden, die erst deaktiviert werden muss."
         }
+      },
+      "buttons": {
+        "title": "Externe Taster",
+        "description": "Ein Taster oder eine Fernbedienung (z. B. IKEA über Zigbee2MQTT oder ZHA) kann Scans starten. Wähle die Entität, die die Tastendrücke meldet (bei Zigbee2MQTT die Entität „… Action“). Leer lassen und speichern schaltet die Funktion ab.",
+        "data": {
+          "button_entity": "Taster-Entität"
+        }
+      },
+      "button_actions": {
+        "title": "Tasten belegen",
+        "description": "Entität: `{entity}`\nBekannte Werte: {known}\n\nTrage ein, welcher Wert welche Aktion startet. Jeder Wert darf nur einmal vorkommen. Was dein Taster bei kurzem und langem Druck sendet, siehst du in Zigbee2MQTT unter „Expose-Funktionen → Action“, während du die Taste drückst.",
+        "data": {
+          "adf": "Einzug scannen",
+          "platen": "Flachbett scannen (in den Stapel)",
+          "toggle_duplex": "Beidseitig umschalten",
+          "batch_send": "Stapel senden",
+          "batch_discard": "Stapel verwerfen"
+        },
+        "data_description": {
+          "adf": "Beidseitig oder einseitig, je nach Schalter „Einzug beidseitig (Taster)“.",
+          "toggle_duplex": "Stellt den Schalter „Einzug beidseitig (Taster)“ um, z. B. auf einen langen Druck."
+        }
       }
     },
     "error": {
@@ -98,7 +121,9 @@
       "invalid_auth": "Token ungültig",
       "paperless_incomplete": "URL und Token müssen beide angegeben werden",
       "invalid_webhook_id": "Ungültige Webhook-ID (6–64 Zeichen: Buchstaben, Ziffern, _ und -)",
-      "test_failed": "Mindestens ein Ziel hat die Testnachricht nicht angenommen (Details im Log)"
+      "test_failed": "Mindestens ein Ziel hat die Testnachricht nicht angenommen (Details im Log)",
+      "duplicate_button_value": "Ein Wert darf nur einer Aktion zugeordnet sein",
+      "no_button_mapping": "Mindestens eine Taste belegen (oder die Entität leer lassen, um die Funktion abzuschalten)"
     }
   },
   "entity": {
@@ -153,6 +178,11 @@
       },
       "queue": {
         "name": "Warteschlange"
+      }
+    },
+    "switch": {
+      "duplex_default": {
+        "name": "Einzug beidseitig (Taster)"
       }
     }
   },

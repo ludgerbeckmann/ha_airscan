@@ -52,7 +52,8 @@
         "title": "Options",
         "menu_options": {
           "settings": "Scan & Paperless",
-          "notifications": "Notifications"
+          "notifications": "Notifications",
+          "buttons": "External buttons"
         }
       },
       "settings": {
@@ -91,6 +92,28 @@
           "notify_services": "e.g. mobile_app_iphone_ludger. Several are possible; \"Benachrichtigung in Home Assistant\" shows in the sidebar.",
           "paperless_webhook_id": "Letters, digits, _ and - only. Do not reuse the ID of an existing automation that is still switched on."
         }
+      },
+      "buttons": {
+        "title": "External buttons",
+        "description": "A button or remote (e.g. IKEA via Zigbee2MQTT or ZHA) can start scans. Choose the entity that reports the presses (with Zigbee2MQTT the \"… action\" entity). Leave empty and save to switch the feature off.",
+        "data": {
+          "button_entity": "Button entity"
+        }
+      },
+      "button_actions": {
+        "title": "Assign the buttons",
+        "description": "Entity: `{entity}`\nKnown values: {known}\n\nEnter which value starts which action. Each value can be used once. In Zigbee2MQTT you can see what your button sends for a short or long press under \"Exposes → Action\" while you press it.",
+        "data": {
+          "adf": "Scan feeder",
+          "platen": "Scan flatbed (into the batch)",
+          "toggle_duplex": "Toggle two-sided",
+          "batch_send": "Send batch",
+          "batch_discard": "Discard batch"
+        },
+        "data_description": {
+          "adf": "Two-sided or one-sided, depending on the \"Feeder two-sided (buttons)\" switch.",
+          "toggle_duplex": "Flips the \"Feeder two-sided (buttons)\" switch, e.g. on a long press."
+        }
       }
     },
     "error": {
@@ -98,7 +121,9 @@
       "invalid_auth": "Invalid token",
       "paperless_incomplete": "URL and token must both be set",
       "invalid_webhook_id": "Invalid webhook ID (6–64 characters: letters, digits, _ and -)",
-      "test_failed": "At least one target did not accept the test message (see the log)"
+      "test_failed": "At least one target did not accept the test message (see the log)",
+      "duplicate_button_value": "A value can only be assigned to one action",
+      "no_button_mapping": "Assign at least one button (or leave the entity empty to switch the feature off)"
     }
   },
   "entity": {
@@ -153,6 +178,11 @@
       },
       "queue": {
         "name": "Queue"
+      }
+    },
+    "switch": {
+      "duplex_default": {
+        "name": "Feeder two-sided (buttons)"
       }
     }
   },
