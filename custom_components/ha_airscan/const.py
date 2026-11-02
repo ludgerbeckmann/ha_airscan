@@ -56,3 +56,4 @@ SERVICE_RETRY_QUEUE = "retry_queue"
 
 CONF_BUTTON_ENTITY = "button_entity"
 CONF_BUTTON_MAP = "button_map"
+CONF_BUTTON_TOPIC = "button_topic"

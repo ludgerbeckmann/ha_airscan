@@ -777,6 +777,12 @@ def test_button_values():
     assert bm.values_of({"event_types": ["stop", "open", "close"]}) == ["close", "open", "stop"]
     assert bm.values_of({"options": ["open", "", None, "close"]}) == ["close", "open"] and bm.values_of({}) == []
 
+    # MQTT: Zigbee2MQTT publishes the value as plain text on <device>/action, the JSON on <device> has it in "action"
+    assert [bm.topic_value(p) for p in ("open", b"close", " stop \n", "", None, '{"action": "open", "linkquality": 18}', '{"action": ""}', '{"battery": 90}', "{kaputt", "[1]")] == \
+        ["open", "close", "stop", None, None, "open", None, None, None, "[1]"]
+    assert bm.valid_topic("zigbee2mqtt/Ikea Fernbedienung/action") and not bm.valid_topic("zigbee2mqtt/#") and not bm.valid_topic("zigbee2mqtt/+/action") \
+        and not bm.valid_topic("") and not bm.valid_topic("  ") and not bm.valid_topic("/zigbee2mqtt/x/action")
+
     d = bm.Debounce(1.0)
     assert d.accept("open", 10.0) and not d.accept("open", 10.4) and d.accept("close", 10.5) and d.accept("open", 12.0)
 
@@ -798,6 +804,21 @@ def test_button_triggers(monkeypatch):
         watched["ids"], watched["action"] = entity_ids, action
         return lambda: None
 
+    subs = []
+
+    async def mqtt_wait(hass):
+        return True
+
+    async def mqtt_subscribe(hass, topic, callback):
+        subs.append((topic, callback))
+        return lambda: None
+
+    mqtt_mod = _types.ModuleType("homeassistant.components.mqtt")
+    mqtt_mod.async_wait_for_mqtt_client, mqtt_mod.async_subscribe = mqtt_wait, mqtt_subscribe
+    components = _types.ModuleType("homeassistant.components")
+    components.mqtt = mqtt_mod
+    monkeypatch.setitem(sys.modules, "homeassistant.components", components)
+    monkeypatch.setitem(sys.modules, "homeassistant.components.mqtt", mqtt_mod)
     mod("homeassistant"); mod("homeassistant.helpers")
     mod("homeassistant.core", Event=object, HomeAssistant=object, callback=lambda f: f)
     mod("homeassistant.exceptions", HomeAssistantError=HAError)
@@ -889,8 +910,40 @@ def test_button_triggers(monkeypatch):
         await press("open", advance=3.0)
         assert calls == [("scan", {"source": "adf", "duplex": False})]
 
+        # MQTT topic as the source (Zigbee2MQTT without any entity)
+        tracker.duplex_default = False
+        entry.runtime_data.capabilities.adf_duplex = object()
+        entry.options = {"button_topic": "zigbee2mqtt/Ikea Fernbedienung/action",
+                         "button_map": {"adf": "open", "platen": "close", "toggle_duplex": "stop", "batch_send": "", "batch_discard": ""}}
+        entry.async_create_background_task = lambda hass_, coro, name: hass.tasks.append(coro)
+        watched.clear()
+        calls.clear()
+        triggers.ButtonTriggers(hass, entry).async_start()
+        assert watched == {}                      # no entity watched
+        while hass.tasks:
+            await hass.tasks.pop(0)
+        assert [s[0] for s in subs] == ["zigbee2mqtt/Ikea Fernbedienung/action"]
+        send_msg = subs[0][1]
+
+        async def message(payload, advance=2.0):
+            clock[0] += advance
+            send_msg(SimpleNamespace(payload=payload))
+            while hass.tasks:
+                await hass.tasks.pop(0)
+
+        await message("open")
+        await message("close")
+        await message(b"stop")                    # toggles two-sided
+        await message("")                         # reset message of the broker: no press
+        await message('{"action": "open", "linkquality": 18}')
+        await message("open", advance=0.2)        # retransmission within a second: ignored
+        await message("something-else")
+        assert tracker.duplex_default is True
+        assert calls == [("scan", {"source": "adf", "duplex": False}), ("batch_add", {}), ("scan", {"source": "adf", "duplex": True})]
+
         # nothing configured: nothing subscribed
         watched.clear()
+        subs.clear()
         entry.options = {}
         triggers.ButtonTriggers(hass, entry).async_start()
         assert watched == {}
