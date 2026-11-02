@@ -79,6 +79,9 @@ batch_add:
         select:
           translation_key: color_mode
           options: [color, grayscale]
+    skip_blank:
+      selector:
+        boolean:
 
 batch_send:
   fields:

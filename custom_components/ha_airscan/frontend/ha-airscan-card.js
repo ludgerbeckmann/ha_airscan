@@ -11,7 +11,7 @@ const CARD_VERSION = "0.8.0";
 
 const T = {
   de: {
-    ready: "Bereit", running: "Läuft", batch: "Stapel", done: "Fertig", queued: "Wartet", error: "Fehler", unavailable: "Nicht verfügbar", offline: "Offline",
+    ready: "Bereit", notice: "Hinweis", running: "Läuft", batch: "Stapel", done: "Fertig", queued: "Wartet", error: "Fehler", unavailable: "Nicht verfügbar", offline: "Offline",
     platen: "Flachbett", adf: "Einzug", loaded: "Geladen", empty: "Leer", processing: "Arbeitet", jam: "Papierstau",
     cover_open: "Abdeckung offen", feeder_error: "Fehler",
     simplex: "einseitig", duplex_lc: "beidseitig", scan: "Scannen",
@@ -29,11 +29,12 @@ const T = {
     queue_retry: "Jetzt senden", queue_next: (m) => `Nächster Versuch in ${m} min`, queue_rejected: (n) => `${n} von Paperless abgelehnt (Datei bleibt im Ordner ha_airscan_outbox)`, refused_head: (n) => `${n} von Paperless abgelehnt`,
     printer_offline: "Drucker nicht erreichbar", printer_offline_hint: "Ist er eingeschaltet und im Netzwerk? Ein Scan wird trotzdem versucht.",
     printer_fault: (s) => `Drucker-Fehler: ${s}`, printer_fault_hint: "Der Drucker meldet einen Fehler. Bitte am Gerät nachsehen.",
+    notice_blank_skipped: "Leere Seite erkannt", notice_blank_detail: "Nicht zum Stapel hinzugefügt.",
     scanned_n: (n) => `${n} ${n === 1 ? "Seite" : "Seiten"} gescannt`, no_scan_yet: "Noch kein Scan", open_short: "Paperless ↗",
     missing: "Entität nicht gefunden – bitte den Status-Sensor des Scanners angeben.",
   },
   en: {
-    ready: "Ready", running: "Running", batch: "Batch", done: "Done", queued: "Waiting", error: "Error", unavailable: "Unavailable", offline: "Offline",
+    ready: "Ready", notice: "Notice", running: "Running", batch: "Batch", done: "Done", queued: "Waiting", error: "Error", unavailable: "Unavailable", offline: "Offline",
     platen: "Flatbed", adf: "Feeder", loaded: "Loaded", empty: "Empty", processing: "Busy", jam: "Jam",
     cover_open: "Cover open", feeder_error: "Error",
     simplex: "one-sided", duplex_lc: "two-sided", scan: "Scan",
@@ -51,6 +52,7 @@ const T = {
     queue_retry: "Send now", queue_next: (m) => `Next attempt in ${m} min`, queue_rejected: (n) => `${n} refused by Paperless (file stays in the ha_airscan_outbox folder)`, refused_head: (n) => `${n} refused by Paperless`,
     printer_offline: "Printer not reachable", printer_offline_hint: "Is it switched on and on the network? A scan will be attempted anyway.",
     printer_fault: (s) => `Printer fault: ${s}`, printer_fault_hint: "The printer reports a fault. Please check the device.",
+    notice_blank_skipped: "Blank page detected", notice_blank_detail: "Not added to the batch.",
     scanned_n: (n) => `${n} ${n === 1 ? "page" : "pages"} scanned`, no_scan_yet: "No scan yet", open_short: "Paperless ↗",
     missing: "Entity not found – please select the scanner's status sensor.",
   },
@@ -78,7 +80,7 @@ ha-card{color:var(--primary-text-color)}
 .chip.feeder.jam,.chip.feeder.cover_open,.chip.feeder.error{background:color-mix(in srgb,var(--error-color,#db4437) 16%,transparent);color:var(--error-color,#db4437)}
 .chip.ready,.chip.done{background:color-mix(in srgb,var(--success-color,#15a850) 18%,transparent);color:var(--success-color,#15a850)}
 .chip.running{background:color-mix(in srgb,var(--primary-color) 16%,transparent);color:var(--primary-color)}
-.chip.batch,.chip.queued{background:color-mix(in srgb,var(--warning-color,#ffa600) 22%,transparent);color:var(--warning-color,#b97700)}
+.chip.batch,.chip.queued,.chip.notice{background:color-mix(in srgb,var(--warning-color,#ffa600) 22%,transparent);color:var(--warning-color,#b97700)}
 .chip.error,.chip.unavailable{background:color-mix(in srgb,var(--error-color,#db4437) 16%,transparent);color:var(--error-color,#db4437)}
 /* the one status area: always the same height, whatever it says */
 .status{box-sizing:border-box;height:88px;border-radius:12px;padding:10px 12px;background:var(--secondary-background-color);display:flex;flex-direction:column;gap:4px;overflow:hidden}
@@ -199,7 +201,7 @@ class HaAirscanCard extends HTMLElement {
     if (this._ui.resolution !== "default") o.resolution = Number(this._ui.resolution);
     if (this._ui.color !== "default") o.color_mode = this._ui.color;
     if (this._ui.page !== "default") o.page_size = this._ui.page;
-    if (!forBatch && this._ui.blank !== "default") o.skip_blank = this._ui.blank === "on";
+    if (this._ui.blank !== "default") o.skip_blank = this._ui.blank === "on";
     return o;
   }
 
@@ -302,6 +304,8 @@ class HaAirscanCard extends HTMLElement {
       info = { tone: "err", chip: "error", headline: t.printer_fault(a.printer_state), detail: t.printer_fault_hint };
     } else if (status === "error") {
       info = { tone: "err", chip: "error", headline: t.failed, detail: String(a.detail || "").replace(/^Scan fehlgeschlagen:\s*/i, "") };
+    } else if (a.notice === "blank_skipped" && a.notice_at && Date.now() - new Date(a.notice_at).getTime() < 600000) {
+      info = { tone: "warn", chip: "notice", headline: t.notice_blank_skipped, detail: [t.notice_blank_detail, batchPages > 0 ? t.in_batch(batchPages) : ""].filter(Boolean).join(" ") };
     } else if (batchPages > 0) {
       const mins = a.batch_expires_at ? Math.ceil((new Date(a.batch_expires_at).getTime() - Date.now()) / 60000) : null;
       const timer = mins === null ? "" : (mins <= 0 ? t.auto_send_soon : (a.batch_auto_send ? t.auto_send(mins) : t.reminder(mins)));
@@ -359,7 +363,7 @@ class HaAirscanCard extends HTMLElement {
         ${eff.res ? pill(`${eff.res} dpi`, ui.resolution !== "default") : ""}
         ${eff.color ? pill(eff.color === "grayscale" ? t.gray : t.color, ui.color !== "default") : ""}
         ${eff.page ? pill(eff.page === "max" ? t.max : String(eff.page).toUpperCase(), ui.page !== "default") : ""}
-        ${source === "adf" && blankOn ? pill(`${t.blank} ✓`, ui.blank !== "default") : ""}
+        ${blankOn ? pill(`${t.blank} ✓`, ui.blank !== "default") : ""}
         <button class="gear ${ui.open ? "on" : ""}" data-act="gear" aria-label="${esc(t.settings)}" title="${esc(t.settings)}" ${off ? "disabled" : ""}>⚙︎</button>
       </div>`;
     let panel = "";
@@ -369,7 +373,7 @@ class HaAirscanCard extends HTMLElement {
           <label>${esc(t.resolution)}${sel("resolution", [["default", `${t.default} (${settings.resolution || "–"})`], ...RESOLUTIONS.map((r) => [String(r), `${r} dpi`])])}</label>
           <label>${esc(t.color)}${sel("color", [["default", t.default], ["color", t.color], ["grayscale", t.gray]])}</label>
           <label>${esc(t.paper)}${sel("page", [["default", t.default], ...PAGE_SIZES.map((p) => [p, p === "max" ? t.max : p.toUpperCase()])])}</label>
-          ${source === "adf" ? `<label>${esc(t.blank)}${sel("blank", [["default", t.blank_default], ["on", t.on], ["off", t.off]])}</label>` : ""}
+          <label>${esc(t.blank)}${sel("blank", [["default", t.blank_default], ["on", t.on], ["off", t.off]])}</label>
         </div>`;
     }
 

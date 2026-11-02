@@ -94,6 +94,8 @@ class JobStatusSensor(_TrackerSensor):
         return {
             "detail": self._tracker.detail,
             "duplex_default": self._tracker.duplex_default,
+            "notice": self._tracker.notice,
+            "notice_at": self._tracker.notice_at.isoformat() if self._tracker.notice_at else None,
             "printer_online": self._tracker.printer_online,
             "printer_state": self._tracker.printer_state,
             "pages": self._tracker.pages,

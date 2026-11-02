@@ -293,29 +293,68 @@ def _text(lines):
     return draw
 
 
+def _lid(kind):
+    """Synthetic scans of an empty flatbed (pure Pillow, no numpy)."""
+    from PIL import ImageChops
+
+    size = (1240, 1754)
+    noise = Image.effect_noise(size, 3)                      # gaussian noise around 128
+    if kind == "shade":                                      # closed lid with a strong shadow across the page
+        base = Image.linear_gradient("L").rotate(90).resize(size).point(lambda v: 255 - v * 105 // 255)
+    elif kind == "dark":                                     # lid open, nothing reflects
+        base = Image.new("L", size, 25)
+    elif kind == "washed":                                   # lid open in daylight
+        base = Image.new("L", size, 250)
+    else:                                                    # closed lid, slightly grey
+        base = Image.new("L", size, 238)
+    img = ImageChops.add(base, noise, scale=1, offset=-128)
+    b = BytesIO()
+    img.convert("RGB").save(b, "JPEG", quality=85)
+    return b.getvalue()
+
+
 def test_blank_detection():
     blank = _load("blank")
     white = _page()
     dust = _page(lambda d, s: [d.ellipse([300 + i * 90, 700, 304 + i * 90, 704], fill=60) for i in range(5)])
-    showthrough = _page(_text(30), base=255)
     # faint mirrored text of the other side shining through thin paper
     faint = _page(lambda d, s: [d.rectangle([x, y, x + 20, y + 14], fill=228) for y in range(150, 1350, 40) for x in range(120, 1100, 30)])
     shadow_border = _page(lambda d, s: (d.rectangle([0, 0, s[0], 30], fill=90), d.rectangle([0, 0, 25, s[1]], fill=90)))
     full_text = _page(_text(35))
-    short_letter = _page(_text(4))  # only a few lines: must NOT be dropped at the default threshold
-    black = _page(base=10)
+    short_letter = _page(_text(4))           # only a few lines: must NOT be dropped at the default threshold
+    one_line = _page(_text(1))
+    white_on_black = _page(lambda d, s: [d.rectangle([x, 150 + i * 40, x + 20, 164 + i * 40], fill=235) for i in range(6) for x in range(120, 1100, 30)], base=15)
 
     assert blank.is_blank(white) and blank.is_blank(dust)
     assert blank.is_blank(faint), "faint show-through must count as blank"
     assert blank.is_blank(shadow_border), "scanner border shadow is ignored"
-    assert not blank.is_blank(full_text)
-    assert not blank.is_blank(short_letter)
-    assert not blank.is_blank(black), "a dark page is content, not blank"
-    assert showthrough  # sanity: generator works
+    assert not blank.is_blank(full_text) and not blank.is_blank(short_letter)
+    assert not blank.is_blank(one_line), "even a single line of text is content at the default threshold"
 
-    kept, removed = blank.filter_blank([full_text, white, short_letter, faint, full_text])
-    assert removed == 2 and kept == [full_text, short_letter, full_text]  # order preserved
-    assert blank.filter_blank([white, faint]) == ([], 2)
+    # an empty flatbed in every way it can look: all blank
+    for kind in ("grey", "shade", "dark", "washed"):
+        assert blank.is_blank(_lid(kind)), f"empty flatbed ({kind}) must be blank"
+    assert blank.is_blank(_page(base=10)), "a uniformly black scan (lid open) is blank"
+
+    # ... while real content is still found on such backgrounds
+    from PIL import ImageDraw
+    page = Image.new("L", (1240, 1754), 255)
+    d = ImageDraw.Draw(page)
+    for i in range(6):
+        for x in range(120, 1120, 30):
+            d.rectangle([x, 150 + i * 40, x + 20, 164 + i * 40], fill=20)
+    shaded = page.point(lambda v: v)          # text page ...
+    grad = Image.linear_gradient("L").rotate(90).resize(page.size).point(lambda v: v * 80 // 255)
+    from PIL import ImageChops
+    shaded = ImageChops.subtract(shaded, grad)  # ... with a lid shadow across it
+    buf = BytesIO()
+    shaded.convert("RGB").save(buf, "JPEG", quality=85)
+    assert not blank.is_blank(buf.getvalue()), "text on a shaded page is content"
+    assert not blank.is_blank(white_on_black), "light text on a dark page is content"
+
+    kept, removed = blank.filter_blank([full_text, white, short_letter, faint, _lid("dark"), full_text])
+    assert removed == 3 and kept == [full_text, short_letter, full_text]   # order preserved
+    assert blank.filter_blank([white, faint, _lid("shade")]) == ([], 3)
 
 
 # --- page size / feeder states / paperless task ---------------------------------
