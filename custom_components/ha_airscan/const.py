@@ -53,3 +53,6 @@ PERSISTENT_NOTIFICATION = "persistent_notification"
 DEFAULT_NOTIFY_SCAN_TYPES = ["scan_error", "queued", "batch_stale", "printer_offline"]
 DEFAULT_NOTIFY_PAPERLESS_TYPES = ["neu", "frist"]
 SERVICE_RETRY_QUEUE = "retry_queue"
+
+CONF_BUTTON_ENTITY = "button_entity"
+CONF_BUTTON_MAP = "button_map"

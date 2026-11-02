@@ -752,3 +752,147 @@ def test_notifier(monkeypatch):
         assert hass.services.calls == []
 
     asyncio.run(go())
+
+
+# --- external buttons --------------------------------------------------------------
+
+
+def test_button_values():
+    bm = _load("button_map")
+    # event entities (Zigbee2MQTT 2.x, ZHA): the pressed button is the attribute "event_type"
+    assert bm.trigger_value("event", "2026-11-02T08:00:00", "2026-11-02T08:00:05", {"event_type": "open"}) == "open"
+    assert bm.trigger_value("event", "unavailable", "2026-11-02T08:00:05", {"event_type": "open"}) is None   # came back, no press
+    assert bm.trigger_value("event", "2026-11-02T08:00:00", "2026-11-02T08:00:05", {}) is None
+    # enum sensors (older Zigbee2MQTT): the state is the value; the "" in between is the reset
+    assert bm.trigger_value("sensor", "", "open", {}) == "open"
+    assert bm.trigger_value("sensor", "close", "open", {}) == "open"
+    assert bm.trigger_value("sensor", "open", "", {}) is None
+    assert bm.trigger_value("sensor", "unavailable", "open", {}) is None          # restart of HA or the broker must not scan
+    assert bm.trigger_value("sensor", None, "open", {}) is None
+    assert bm.trigger_value("sensor", "open", "unknown", {}) is None
+
+    mapping = {"adf": "open", "platen": " Close ", "toggle_duplex": "stop", "batch_send": "", "batch_discard": ""}
+    assert [bm.action_for(v, mapping) for v in ("open", "OPEN", "close", "stop", "other", "", None)] == ["adf", "adf", "platen", "toggle_duplex", None, None, None]
+    assert bm.duplicate_values({"adf": "open", "platen": "Open"}) == ["open"] and bm.duplicate_values(mapping) == []
+    assert bm.values_of({"event_types": ["stop", "open", "close"]}) == ["close", "open", "stop"]
+    assert bm.values_of({"options": ["open", "", None, "close"]}) == ["close", "open"] and bm.values_of({}) == []
+
+    d = bm.Debounce(1.0)
+    assert d.accept("open", 10.0) and not d.accept("open", 10.4) and d.accept("close", 10.5) and d.accept("open", 12.0)
+
+
+def test_button_triggers(monkeypatch):
+    from types import SimpleNamespace
+
+    class HAError(Exception):
+        pass
+
+    def mod(name, **attrs):
+        m = _types.ModuleType(name)
+        m.__dict__.update(attrs)
+        monkeypatch.setitem(sys.modules, name, m)
+
+    watched = {}
+
+    def track(hass, entity_ids, action):
+        watched["ids"], watched["action"] = entity_ids, action
+        return lambda: None
+
+    mod("homeassistant"); mod("homeassistant.helpers")
+    mod("homeassistant.core", Event=object, HomeAssistant=object, callback=lambda f: f)
+    mod("homeassistant.exceptions", HomeAssistantError=HAError)
+    mod("homeassistant.helpers.event", async_track_state_change_event=track)
+    calls = []
+    fail = {"scan": False}
+
+    async def scan(hass, entry, **kw):
+        calls.append(("scan", kw))
+        if fail["scan"]:
+            raise HAError("Es läuft bereits ein Scan")
+
+    async def add(hass, entry, **kw):
+        calls.append(("batch_add", kw))
+
+    async def send(hass, entry, **kw):
+        calls.append(("batch_send", kw))
+
+    async def discard(hass, entry, **kw):
+        calls.append(("batch_discard", kw))
+
+    monkeypatch.setitem(sys.modules, "airscan_pkg.scan", _types.SimpleNamespace(
+        async_scan=scan, async_batch_add=add, async_batch_send=send, async_batch_discard=discard))
+    triggers = _load("triggers")
+
+    class Tracker:
+        duplex_default = False
+        updates = 0
+
+        def update(self, *a, **k):
+            self.updates += 1
+
+    class Hass:
+        def __init__(self):
+            self.tasks = []
+
+        def async_create_task(self, coro):
+            self.tasks.append(coro)
+
+    async def go():
+        tracker = Tracker()
+        entry = SimpleNamespace(
+            options={"button_entity": "event.remote_action",
+                     "button_map": {"adf": "open", "platen": "close", "toggle_duplex": "stop", "batch_send": "", "batch_discard": ""}},
+            runtime_data=SimpleNamespace(tracker=tracker, capabilities=SimpleNamespace(adf_duplex=object())),
+            async_on_unload=lambda fn: None,
+        )
+        hass = Hass()
+        t = triggers.ButtonTriggers(hass, entry)
+        t.async_start()
+        assert watched["ids"] == ["event.remote_action"]
+
+        clock = [100.0]
+        monkeypatch.setattr(sys.modules["airscan_pkg.button_map"].time, "monotonic", lambda: clock[0])
+
+        async def press(value, old="2026-11-02T08:00:00", advance=2.0):
+            clock[0] += advance
+            new = SimpleNamespace(domain="event", state=f"t{clock[0]}", attributes={"event_type": value})
+            watched["action"](SimpleNamespace(data={"old_state": SimpleNamespace(state=old), "new_state": new}))
+            while hass.tasks:
+                await hass.tasks.pop(0)
+
+        await press("open")                       # feeder, one-sided
+        await press("close")                      # flatbed -> batch
+        await press("stop")                       # long press: switch to two-sided
+        assert tracker.duplex_default is True and tracker.updates == 1
+        await press("open")                       # feeder, now two-sided
+        await press("stop")                       # and back
+        await press("open")
+        await press("nothing-mapped")
+        assert calls == [("scan", {"source": "adf", "duplex": False}), ("batch_add", {}),
+                         ("scan", {"source": "adf", "duplex": True}), ("scan", {"source": "adf", "duplex": False})]
+
+        calls.clear()
+        await press("open", advance=2.0)
+        await press("open", advance=0.3)          # radio retransmission within a second: ignored
+        assert len(calls) == 1
+
+        fail["scan"] = True                       # a scan that cannot start must not crash the listener
+        calls.clear()
+        await press("open", advance=3.0)
+        assert len(calls) == 1
+
+        # a scanner without duplex never asks for it, even if the switch state says so
+        tracker.duplex_default = True
+        entry.runtime_data.capabilities.adf_duplex = None
+        fail["scan"] = False
+        calls.clear()
+        await press("open", advance=3.0)
+        assert calls == [("scan", {"source": "adf", "duplex": False})]
+
+        # nothing configured: nothing subscribed
+        watched.clear()
+        entry.options = {}
+        triggers.ButtonTriggers(hass, entry).async_start()
+        assert watched == {}
+
+    asyncio.run(go())

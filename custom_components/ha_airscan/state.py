@@ -28,6 +28,7 @@ class ScanTracker:
         self.last: dict = {}  # summary of the last finished scan
         self.finished_at: datetime | None = None
         self.batch_expires_at: datetime | None = None
+        self.duplex_default = False          # feeder scans from external buttons: two-sided?
         self.printer_failures = 0           # consecutive failed status polls
         self.printer_state: str | None = None   # eSCL state: Idle, Processing, Stopped, ...
         self.batch_dpi = 300
