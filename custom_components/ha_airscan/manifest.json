@@ -15,7 +15,7 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/ludgerbeckmann/ha_airscan/issues",
   "requirements": [],
-  "version": "0.12.0",
+  "version": "0.12.1",
   "zeroconf": [
     {
       "type": "_uscan._tcp.local."
