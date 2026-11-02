@@ -29,7 +29,7 @@
           "batch_timeout": "Forgotten batch after (minutes, 0 = off)",
           "batch_auto_send": "Send forgotten batch automatically",
           "paperless_verify_ssl": "Verify SSL certificate",
-          "blank_detection": "Remove blank pages from the feeder",
+          "blank_detection": "Detect and remove blank pages (feeder and flatbed)",
           "blank_threshold": "Blank page threshold (% ink, higher = more aggressive)",
           "page_size": "Paper size",
           "adf_align": "Sheet position in the feeder"
@@ -70,7 +70,7 @@
           "batch_timeout": "Forgotten batch after (minutes, 0 = off)",
           "batch_auto_send": "Send forgotten batch automatically",
           "paperless_verify_ssl": "Verify SSL certificate",
-          "blank_detection": "Remove blank pages from the feeder",
+          "blank_detection": "Detect and remove blank pages (feeder and flatbed)",
           "blank_threshold": "Blank page threshold (% ink, higher = more aggressive)",
           "page_size": "Paper size",
           "adf_align": "Sheet position in the feeder"
@@ -296,7 +296,7 @@
         },
         "skip_blank": {
           "name": "Remove blank pages",
-          "description": "Feeder only. Overrides the integration setting."
+          "description": "Feeder and flatbed. Overrides the integration setting."
         },
         "page_size": {
           "name": "Paper size",
@@ -323,6 +323,10 @@
         "page_size": {
           "name": "Paper size",
           "description": "Limits the scan area to avoid white borders."
+        },
+        "skip_blank": {
+          "name": "Remove blank pages",
+          "description": "A blank page is not added to the batch. Overrides the integration setting."
         }
       }
     },

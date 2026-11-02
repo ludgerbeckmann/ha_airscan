@@ -109,7 +109,7 @@ SCAN_SCHEMA = vol.Schema(
         **_DELIVERY,
     }
 )
-BATCH_ADD_SCHEMA = vol.Schema({**_ENTRY, **_QUALITY})
+BATCH_ADD_SCHEMA = vol.Schema({**_ENTRY, **_QUALITY, vol.Optional("skip_blank"): cv.boolean})
 BATCH_SEND_SCHEMA = vol.Schema({**_ENTRY, **_DELIVERY})
 BATCH_DISCARD_SCHEMA = vol.Schema(_ENTRY)
 

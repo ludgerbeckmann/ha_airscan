@@ -141,6 +141,25 @@ const assert = require("assert");
     out.oldBanners = root(bt).querySelectorAll(".banner, .live, .stack, .link").length;
     out.statusHeight = Math.round(root(bt).querySelector(".status").getBoundingClientRect().height);
 
+    // --- blank pages on the flatbed ---
+    localStorage.clear();
+    const bn = mount({ status: "idle", ui: { source: "platen" }, attrs: { notice: "blank_skipped", notice_at: iso(-60000) } }, boxed(360));
+    out.notice = [root(bn).querySelector(".status .chip").textContent, root(bn).querySelector(".headline").textContent, root(bn).querySelector(".detail").textContent];
+    const bn2 = mount({ status: "batch", attrs: { batch_pages: 2, notice: "blank_skipped", notice_at: iso(-60000) } }, boxed(360));
+    out.noticeWithBatch = root(bn2).querySelector(".detail").textContent;
+    const bn3 = mount({ status: "idle", ui: { source: "platen" }, attrs: { notice: "blank_skipped", notice_at: iso(-11 * 60000) } }, boxed(360));
+    out.noticeStale = root(bn3).querySelector(".status .chip").textContent;          // after 10 minutes the hint is gone
+    out.heights.notice = Math.round(root(bn).querySelector(".body").getBoundingClientRect().height);
+    out.heights.flat = out.heights.flat || out.heights["flat@360"];
+    const pf = mount({ status: "idle", ui: { source: "platen", blank: "off" } }, boxed(360));
+    out.pillFlatbedOff = [...root(pf).querySelectorAll(".pill")].some((p2) => /Leerseiten/.test(p2.textContent));
+    click(pf, '[data-act="scan"]');
+    out.flatbedBlankOff = pf._hass.calls.slice();
+    const pf2 = mount({ status: "idle", ui: { source: "platen" } }, boxed(360));        // default: detection on (harness settings)
+    out.pillFlatbedOn = [...root(pf2).querySelectorAll(".pill")].some((p2) => /Leerseiten/.test(p2.textContent));
+    click(pf2, '[data-act="gear"]'); await tick();
+    out.blankSelectOnFlatbed = root(pf2).querySelector('[data-set="blank"]') !== null;
+
     const x = document.createElement("ha-airscan-card"); x.setConfig({ entity: "sensor.nope" });
     x.hass = { language: "de", states: {}, entities: {} }; document.body.appendChild(x);
     out.missing = x.shadowRoot.querySelector(".missing")?.textContent;
@@ -183,6 +202,14 @@ const assert = require("assert");
   assert.strictEqual(result.statusAreas, 1, "exactly one status area");
   assert.strictEqual(result.oldBanners, 0, "no separate banners any more");
   assert.strictEqual(result.statusHeight, 88);
+  assert.deepStrictEqual(result.notice, ["Hinweis", "Leere Seite erkannt", "Nicht zum Stapel hinzugefügt."]);
+  assert.strictEqual(result.noticeWithBatch, "Nicht zum Stapel hinzugefügt. 2 Seiten im Stapel");
+  assert.strictEqual(result.noticeStale, "Bereit", "the hint disappears after ten minutes");
+  assert.ok(Math.abs(result.heights.notice - result.heights["flat@360"]) <= 1, "the hint does not change the card height");
+  assert.strictEqual(result.pillFlatbedOff, false);
+  assert.strictEqual(result.pillFlatbedOn, true, "blank-page pill is shown for the flatbed too");
+  assert.strictEqual(result.blankSelectOnFlatbed, true, "per-scan setting is offered for the flatbed too");
+  assert.deepStrictEqual(result.flatbedBlankOff, [["ha_airscan", "batch_add", { skip_blank: false }]]);
   assert.strictEqual(result.runDetail, "Einzug beidseitig", "no repeat of the counter");
   assert.strictEqual(result.runDetail2, "Prüfe auf Leerseiten…", "special steps are shown");
   assert.strictEqual(result.offChip, "Offline");

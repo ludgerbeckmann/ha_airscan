@@ -29,7 +29,7 @@
           "batch_timeout": "Stapel vergessen nach (Minuten, 0 = aus)",
           "batch_auto_send": "Vergessenen Stapel automatisch senden",
           "paperless_verify_ssl": "SSL-Zertifikat prüfen",
-          "blank_detection": "Leerseiten im Einzug entfernen",
+          "blank_detection": "Leerseiten erkennen und entfernen (Einzug und Flachbett)",
           "blank_threshold": "Leerseiten-Schwelle (% Tintenanteil, höher = aggressiver)",
           "page_size": "Papierformat",
           "adf_align": "Papierlage im Einzug"
@@ -70,7 +70,7 @@
           "batch_timeout": "Stapel vergessen nach (Minuten, 0 = aus)",
           "batch_auto_send": "Vergessenen Stapel automatisch senden",
           "paperless_verify_ssl": "SSL-Zertifikat prüfen",
-          "blank_detection": "Leerseiten im Einzug entfernen",
+          "blank_detection": "Leerseiten erkennen und entfernen (Einzug und Flachbett)",
           "blank_threshold": "Leerseiten-Schwelle (% Tintenanteil, höher = aggressiver)",
           "page_size": "Papierformat",
           "adf_align": "Papierlage im Einzug"
@@ -296,7 +296,7 @@
         },
         "skip_blank": {
           "name": "Leerseiten entfernen",
-          "description": "Nur Einzug. Überschreibt die Einstellung der Integration."
+          "description": "Einzug und Flachbett. Überschreibt die Einstellung der Integration."
         },
         "page_size": {
           "name": "Papierformat",
@@ -323,6 +323,10 @@
         "page_size": {
           "name": "Papierformat",
           "description": "Begrenzt den Scanbereich, damit keine weißen Ränder entstehen."
+        },
+        "skip_blank": {
+          "name": "Leerseiten entfernen",
+          "description": "Eine leere Seite wird nicht zum Stapel hinzugefügt. Überschreibt die Einstellung der Integration."
         }
       }
     },

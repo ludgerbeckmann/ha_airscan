@@ -258,6 +258,15 @@ async def wait_for_paperless(data: AirscanData, result: dict) -> None:
     result["paperless_pending"] = True  # still being processed; not an error
 
 
+def _blank_enabled(entry: AirscanConfigEntry, skip_blank: bool | None) -> bool:
+    """Blank page removal: the call decides, otherwise the integration option (feeder and flatbed)."""
+    return bool(entry.options.get(CONF_BLANK_DETECTION, False) if skip_blank is None else skip_blank)
+
+
+def _blank_threshold(entry: AirscanConfigEntry) -> float:
+    return float(entry.options.get(CONF_BLANK_THRESHOLD, DEFAULT_INK_PERCENT))
+
+
 def _check_destination(hass: HomeAssistant, data: AirscanData, destination: str, directory: str | None) -> None:
     if destination == "paperless":
         if data.paperless is None:
@@ -333,8 +342,8 @@ async def async_scan(
 ) -> dict:
     """Scan (flatbed = one page, ADF = whole stack) and deliver the PDF.
 
-    Blank page removal only applies to the feeder; it follows the integration
-    option unless `skip_blank` is given.
+    Blank page removal (feeder and flatbed) follows the integration option unless
+    `skip_blank` is given.
     """
     data = entry.runtime_data
     duplex = duplex and source == "adf"
@@ -344,6 +353,7 @@ async def async_scan(
 
     _acquire(data)
     async with data.lock:
+        data.tracker.set_notice("")
         data.tracker.update("running", "Scan startet", 0)
         try:
             pages = await _run_scan(
@@ -353,15 +363,9 @@ async def async_scan(
                 adf_align=entry.options.get(CONF_ADF_ALIGN, DEFAULT_ADF_ALIGN),
             )
             removed = 0
-            if source == "adf" and (
-                entry.options.get(CONF_BLANK_DETECTION, False)
-                if skip_blank is None
-                else skip_blank
-            ):
+            if _blank_enabled(entry, skip_blank):
                 data.tracker.update(detail="Prüfe auf Leerseiten…")
-                pages, removed = await hass.async_add_executor_job(
-                    filter_blank, pages, float(entry.options.get(CONF_BLANK_THRESHOLD, DEFAULT_INK_PERCENT))
-                )
+                pages, removed = await hass.async_add_executor_job(filter_blank, pages, _blank_threshold(entry))
                 if not pages:
                     raise HomeAssistantError(
                         "Alle Seiten wurden als leer erkannt – Papier richtig eingelegt?"
@@ -427,8 +431,9 @@ async def async_batch_add(
     resolution: int | None = None,
     color_mode: str | None = None,
     page_size: str | None = None,
+    skip_blank: bool | None = None,
 ) -> dict:
-    """Scan one flatbed page into the batch buffer."""
+    """Scan one flatbed page into the batch buffer (a blank page is not added)."""
     data = entry.runtime_data
     src_caps = _source_caps(data, "platen", False)
     dpi, color = _resolve(entry, resolution, color_mode, src_caps)
@@ -438,6 +443,7 @@ async def async_batch_add(
     _acquire(data)
     async with data.lock:
         data.tracker.cancel_timer()
+        data.tracker.set_notice("")
         data.tracker.update("running", "Scan startet")
         try:
             pages = await _run_scan(
@@ -449,6 +455,14 @@ async def async_batch_add(
             error = _fail(hass, entry, err)
             _arm_stale_timer(hass, entry)
             raise error from err
+        if _blank_enabled(entry, skip_blank):
+            data.tracker.update(detail="Prüfe auf Leerseiten…")
+            pages, removed = await hass.async_add_executor_job(filter_blank, pages, _blank_threshold(entry))
+            if not pages:   # empty flatbed: nothing to add, but tell the user
+                data.tracker.set_notice("blank_skipped", dt_util.utcnow())
+                _batch_idle(data)
+                _arm_stale_timer(hass, entry)
+                return {"batch_pages": len(data.tracker.batch), "blank_skipped": removed}
         if sum(map(len, data.tracker.batch)) + sum(map(len, pages)) > MAX_BATCH_BYTES:
             error = _fail(hass, entry, HomeAssistantError("Stapel zu groß (Limit 512 MiB) – bitte senden"))
             _arm_stale_timer(hass, entry)
@@ -480,6 +494,7 @@ async def async_batch_send(
     _acquire(data)
     async with data.lock:
         data.tracker.cancel_timer()
+        data.tracker.set_notice("")
         data.tracker.update("running", "Erzeuge PDF und speichere…")
         try:
             result = await _deliver(
@@ -501,5 +516,6 @@ async def async_batch_discard(hass: HomeAssistant, entry: AirscanConfigEntry) ->
     """Empty the batch buffer."""
     data = entry.runtime_data
     data.tracker.cancel_timer()
+    data.tracker.set_notice("")
     data.tracker.batch.clear()
     _batch_idle(data, "Stapel verworfen")

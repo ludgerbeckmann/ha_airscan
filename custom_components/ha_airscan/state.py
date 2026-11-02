@@ -28,6 +28,8 @@ class ScanTracker:
         self.last: dict = {}  # summary of the last finished scan
         self.finished_at: datetime | None = None
         self.batch_expires_at: datetime | None = None
+        self.notice = ""                    # e.g. "blank_skipped": something worth a hint, but no error
+        self.notice_at: datetime | None = None
         self.duplex_default = False          # feeder scans from external buttons: two-sided?
         self.printer_failures = 0           # consecutive failed status polls
         self.printer_state: str | None = None   # eSCL state: Idle, Processing, Stopped, ...
@@ -46,6 +48,12 @@ class ScanTracker:
         if pages is not None:
             self.pages = pages
         async_dispatcher_send(self._hass, self.signal)
+
+    @callback
+    def set_notice(self, notice: str, now: datetime | None = None) -> None:
+        """Remember a hint (shown for a few minutes) or clear it with an empty string."""
+        self.notice = notice
+        self.notice_at = now if notice else None
 
     @property
     def printer_online(self) -> bool:
