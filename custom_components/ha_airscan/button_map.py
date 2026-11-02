@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 from typing import Any
 
@@ -29,6 +30,29 @@ def trigger_value(domain: str, old_state: str | None, new_state: str, attributes
     if old_state in ("unavailable", "unknown", None):
         return None
     return str(new_state)
+
+
+def topic_value(payload: Any) -> str | None:
+    """The button value in an MQTT message.
+
+    Zigbee2MQTT publishes the pressed button as plain text on `<base>/<device>/action`; the JSON
+    on `<base>/<device>` carries it in the field "action". Empty values (resets) are no press.
+    """
+    if isinstance(payload, bytes):
+        payload = payload.decode("utf-8", "replace")
+    text = str(payload or "").strip()
+    if text.startswith("{"):
+        try:
+            data = json.loads(text)
+        except ValueError:
+            return None
+        text = str(data.get("action") or "").strip() if isinstance(data, dict) else ""
+    return text or None
+
+
+def valid_topic(topic: str) -> bool:
+    """A concrete MQTT topic, no wildcards (a wildcard would catch other devices as well)."""
+    return bool(topic.strip()) and not any(ch in topic for ch in "#+") and not topic.startswith("/")
 
 
 def action_for(value: str | None, mapping: dict[str, str]) -> str | None:

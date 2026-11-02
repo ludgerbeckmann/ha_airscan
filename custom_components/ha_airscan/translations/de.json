@@ -95,14 +95,18 @@
       },
       "buttons": {
         "title": "Externe Taster",
-        "description": "Ein Taster oder eine Fernbedienung (z. B. IKEA über Zigbee2MQTT oder ZHA) kann Scans starten. Wähle die Entität, die die Tastendrücke meldet (bei Zigbee2MQTT die Entität „… Action“). Leer lassen und speichern schaltet die Funktion ab.",
+        "description": "Ein Taster oder eine Fernbedienung kann Scans starten. Es gibt zwei Wege, trage nur einen ein:\n\n• **MQTT-Thema** (empfohlen für Zigbee2MQTT, braucht keine Änderung an Zigbee2MQTT): `zigbee2mqtt/<Gerätename>/action`, z. B. `zigbee2mqtt/Ikea Fernbedienung/action`.\n• **Entität**, die die Tastendrücke meldet (ZHA, Matter, oder Zigbee2MQTT mit eingeschalteten Event-Entitäten).\n\nBeides leer lassen und speichern schaltet die Funktion ab.",
         "data": {
-          "button_entity": "Taster-Entität"
+          "button_entity": "Entität",
+          "button_topic": "MQTT-Thema"
+        },
+        "data_description": {
+          "button_topic": "Genau so, wie es in Zigbee2MQTT steht, mit dem Gerätenamen (keine Platzhalter # oder +)."
         }
       },
       "button_actions": {
         "title": "Tasten belegen",
-        "description": "Entität: `{entity}`\nBekannte Werte: {known}\n\nTrage ein, welcher Wert welche Aktion startet. Jeder Wert darf nur einmal vorkommen. Was dein Taster bei kurzem und langem Druck sendet, siehst du in Zigbee2MQTT unter „Expose-Funktionen → Action“, während du die Taste drückst.",
+        "description": "Quelle: `{entity}`\nBekannte Werte: {known}\n\nTrage ein, welcher Wert welche Aktion startet. Jeder Wert darf nur einmal vorkommen. Beim IKEA-Taster sind das `open` und `close` (Groß-/Kleinschreibung egal). Was ein langer Druck sendet, siehst du in Zigbee2MQTT unter „Expose-Funktionen → Action“, während du die Taste drückst.",
         "data": {
           "adf": "Einzug scannen",
           "platen": "Flachbett scannen (in den Stapel)",
@@ -123,7 +127,9 @@
       "invalid_webhook_id": "Ungültige Webhook-ID (6–64 Zeichen: Buchstaben, Ziffern, _ und -)",
       "test_failed": "Mindestens ein Ziel hat die Testnachricht nicht angenommen (Details im Log)",
       "duplicate_button_value": "Ein Wert darf nur einer Aktion zugeordnet sein",
-      "no_button_mapping": "Mindestens eine Taste belegen (oder die Entität leer lassen, um die Funktion abzuschalten)"
+      "no_button_mapping": "Mindestens eine Taste belegen (oder die Entität leer lassen, um die Funktion abzuschalten)",
+      "button_source_both": "Bitte nur eine Quelle eintragen: Entität oder MQTT-Thema",
+      "invalid_topic": "Ungültiges Thema (ohne Platzhalter # oder +, nicht mit / beginnen)"
     }
   },
   "entity": {
