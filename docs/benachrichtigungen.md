@@ -2,7 +2,7 @@
 
 Zurück zur [Übersicht](../README.md).
 
-Einstellungen → Geräte & Dienste → Scan to Paperless → *Konfigurieren* → *Benachrichtigungen*. Ohne ein Ziel wird nichts gesendet.
+Einstellungen → Geräte & Dienste → Scan to Paperless → *Konfigurieren* → Abschnitt *Benachrichtigungen*. Ohne ein Ziel wird nichts gesendet.
 
 ## Ziele
 

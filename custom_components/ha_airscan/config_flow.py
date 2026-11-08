@@ -12,6 +12,7 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.data_entry_flow import section
 from homeassistant.components import webhook
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -292,126 +293,126 @@ def _webhook_url(hass: HomeAssistant, webhook_id: str) -> str:
         return f"/api/webhook/{webhook_id}"
 
 
+SECTION_PAPERLESS = "paperless"
+SECTION_SCAN = "scan"
+SECTION_NOTIFY = "notifications"
+SECTION_BUTTONS = "buttons"
+
+_PAPERLESS_KEYS = {
+    CONF_PAPERLESS_URL, CONF_PAPERLESS_TOKEN, CONF_PAPERLESS_VERIFY_SSL,
+    CONF_TAGS, CONF_CORRESPONDENT, CONF_DOCUMENT_TYPE,
+}
+
+
+def _pick(schema: vol.Schema, keys: set[str], *, invert: bool = False) -> vol.Schema:
+    """Sub-schema with only (or without) the given keys."""
+    return vol.Schema(
+        {k: v for k, v in schema.schema.items() if (str(k) in keys) != invert}
+    )
+
+
+def _buttons_schema(d: dict[str, Any], known: list[str]) -> vol.Schema:
+    shown = d.get(CONF_BUTTON_MAP) or {}
+    fields: dict[Any, Any] = {
+        vol.Optional(
+            CONF_BUTTON_ENTITY, description={"suggested_value": d.get(CONF_BUTTON_ENTITY)}
+        ): selector.EntitySelector(selector.EntitySelectorConfig(domain=["event", "sensor"])),
+        vol.Optional(
+            CONF_BUTTON_TOPIC, description={"suggested_value": d.get(CONF_BUTTON_TOPIC)}
+        ): str,
+    }
+    for action in BUTTON_ACTIONS:
+        fields[vol.Optional(action, description={"suggested_value": shown.get(action, "")})] = (
+            selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=known, custom_value=True, mode=selector.SelectSelectorMode.DROPDOWN
+                )
+            )
+        )
+    return vol.Schema(fields)
+
+
+def _options_form(hass: HomeAssistant, d: dict[str, Any], known: list[str]) -> vol.Schema:
+    """One form, four collapsible sections."""
+    flat = _options_schema(d)
+    return vol.Schema(
+        {
+            vol.Required(SECTION_PAPERLESS): section(
+                _pick(flat, _PAPERLESS_KEYS), {"collapsed": False}
+            ),
+            vol.Required(SECTION_SCAN): section(
+                _pick(flat, _PAPERLESS_KEYS, invert=True), {"collapsed": True}
+            ),
+            vol.Required(SECTION_NOTIFY): section(_notify_schema(hass, d), {"collapsed": True}),
+            vol.Required(SECTION_BUTTONS): section(_buttons_schema(d, known), {"collapsed": True}),
+        }
+    )
+
+
+def _flatten(user_input: dict[str, Any]) -> dict[str, Any]:
+    """Sections back to flat options (button settings under their option keys)."""
+    flat: dict[str, Any] = {}
+    for name in (SECTION_PAPERLESS, SECTION_SCAN, SECTION_NOTIFY):
+        flat.update(user_input.get(name) or {})
+    buttons = user_input.get(SECTION_BUTTONS) or {}
+    flat[CONF_BUTTON_ENTITY] = buttons.get(CONF_BUTTON_ENTITY) or ""
+    flat[CONF_BUTTON_TOPIC] = str(buttons.get(CONF_BUTTON_TOPIC) or "").strip()
+    flat[CONF_BUTTON_MAP] = {a: str(buttons.get(a) or "").strip() for a in BUTTON_ACTIONS}
+    return flat
+
+
 class AirscanOptionsFlow(OptionsFlow):
-    """Options: scan/Paperless settings and notifications."""
+    """Options: everything on one page, grouped in sections."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Menu."""
-        return self.async_show_menu(step_id="init", menu_options=["settings", "notifications", "buttons"])
-
-    async def async_step_settings(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Paperless and scan defaults (merged into the other options)."""
+        """Paperless, scan defaults, notifications and external buttons."""
+        saved = dict(self.config_entry.options)
+        current = saved
         errors: dict[str, str] = {}
         detail = ""
         if user_input is not None:
-            error, detail = await _validate_paperless(self.hass, user_input)
-            if not error:
-                return self.async_create_entry(data={**self.config_entry.options, **user_input})
-            errors["base"] = error
-        return self.async_show_form(
-            step_id="settings",
-            data_schema=_options_schema(user_input or dict(self.config_entry.options)),
-            errors=errors,
-            description_placeholders={"error_detail": detail if errors else ""},
-        )
-
-    async def async_step_notifications(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Where to send which message."""
-        errors: dict[str, str] = {}
-        current = user_input or dict(self.config_entry.options)
-        if user_input is not None:
-            webhook_id = str(user_input.get(CONF_PAPERLESS_WEBHOOK_ID, "")).strip()
-            if user_input.get(CONF_PAPERLESS_WEBHOOK) and not re.fullmatch(r"[A-Za-z0-9_-]{6,64}", webhook_id):
-                errors[CONF_PAPERLESS_WEBHOOK_ID] = "invalid_webhook_id"
+            flat = _flatten(user_input)
+            current = {**saved, **flat}
+            entity, topic, mapping = flat[CONF_BUTTON_ENTITY], flat[CONF_BUTTON_TOPIC], flat[CONF_BUTTON_MAP]
+            webhook_id = str(flat.get(CONF_PAPERLESS_WEBHOOK_ID, "")).strip()
+            error, detail = await _validate_paperless(self.hass, flat)
+            if error:
+                errors["base"] = error
+            elif flat.get(CONF_PAPERLESS_WEBHOOK) and not re.fullmatch(r"[A-Za-z0-9_-]{6,64}", webhook_id):
+                errors["base"] = "invalid_webhook_id"
+            elif entity and topic:
+                errors["base"] = "button_source_both"
+            elif topic and not valid_topic(topic):
+                errors["base"] = "invalid_topic"
+            elif (entity or topic) and duplicate_values(mapping):
+                errors["base"] = "duplicate_button_value"
+            elif (entity or topic) and not any(mapping.values()):
+                errors["base"] = "no_button_mapping"
             else:
-                options = {**self.config_entry.options, **{k: v for k, v in user_input.items() if k != "send_test"}}
+                options = {**saved, **{k: v for k, v in flat.items() if k != "send_test"}}
                 options[CONF_PAPERLESS_WEBHOOK_ID] = webhook_id
-                if user_input.get("send_test"):
-                    failures = await async_send_test(self.hass, options, self.config_entry.entry_id)
-                    if failures:
+                for key in (CONF_BUTTON_ENTITY, CONF_BUTTON_TOPIC, CONF_BUTTON_MAP):
+                    options.pop(key, None)
+                if entity or topic:
+                    options[CONF_BUTTON_ENTITY if entity else CONF_BUTTON_TOPIC] = entity or topic
+                    options[CONF_BUTTON_MAP] = mapping
+                if flat.get("send_test"):
+                    if await async_send_test(self.hass, options, self.config_entry.entry_id):
                         errors["base"] = "test_failed"
                 if not errors:
                     return self.async_create_entry(data=options)
-        schema = _notify_schema(self.hass, current)
-        webhook_id = current.get(CONF_PAPERLESS_WEBHOOK_ID) or next(
-            (k.default() for k in schema.schema if k == CONF_PAPERLESS_WEBHOOK_ID), ""
-        )
+        webhook_id = current.get(CONF_PAPERLESS_WEBHOOK_ID) or f"paperless_{secrets.token_hex(8)}"
+        current = {**current, CONF_PAPERLESS_WEBHOOK_ID: webhook_id, "send_test": False}
+        source = current.get(CONF_BUTTON_ENTITY)
+        state = self.hass.states.get(source) if source else None
+        known = values_of(dict(state.attributes)) if state else []
         return self.async_show_form(
-            step_id="notifications",
-            data_schema=schema,
+            step_id="init",
+            data_schema=_options_form(self.hass, current, known),
             errors=errors,
-            description_placeholders={"webhook_url": _webhook_url(self.hass, webhook_id)},
-        )
-
-    async def async_step_buttons(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Step 1 of the external buttons: where do the button presses come from?"""
-        options = dict(self.config_entry.options)
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            entity = user_input.get(CONF_BUTTON_ENTITY) or ""
-            topic = str(user_input.get(CONF_BUTTON_TOPIC) or "").strip()
-            if entity and topic:
-                errors["base"] = "button_source_both"
-            elif topic and not valid_topic(topic):
-                errors[CONF_BUTTON_TOPIC] = "invalid_topic"
-            elif not entity and not topic:   # both empty: switch the feature off
-                for key in (CONF_BUTTON_ENTITY, CONF_BUTTON_TOPIC, CONF_BUTTON_MAP):
-                    options.pop(key, None)
-                return self.async_create_entry(data=options)
-            else:
-                self._button_source = ("entity", entity) if entity else ("topic", topic)
-                return await self.async_step_button_actions()
-        shown = user_input or options
-        return self.async_show_form(
-            step_id="buttons",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(
-                        CONF_BUTTON_ENTITY, description={"suggested_value": shown.get(CONF_BUTTON_ENTITY)}
-                    ): selector.EntitySelector(selector.EntitySelectorConfig(domain=["event", "sensor"])),
-                    vol.Optional(
-                        CONF_BUTTON_TOPIC, description={"suggested_value": shown.get(CONF_BUTTON_TOPIC)}
-                    ): str,
-                }
-            ),
-            errors=errors,
-        )
-
-    async def async_step_button_actions(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Step 2: which value of the button starts which action?"""
-        kind, source = self._button_source
-        known: list[str] = []
-        if kind == "entity" and (state := self.hass.states.get(source)):
-            known = values_of(dict(state.attributes))
-        saved = self.config_entry.options
-        same = saved.get(CONF_BUTTON_ENTITY if kind == "entity" else CONF_BUTTON_TOPIC) == source
-        previous = saved.get(CONF_BUTTON_MAP, {}) if same else {}
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            mapping = {a: str(user_input.get(a) or "").strip() for a in BUTTON_ACTIONS}
-            if duplicate_values(mapping):
-                errors["base"] = "duplicate_button_value"
-            elif not any(mapping.values()):
-                errors["base"] = "no_button_mapping"
-            else:
-                options = {k: v for k, v in saved.items() if k not in (CONF_BUTTON_ENTITY, CONF_BUTTON_TOPIC)}
-                options[CONF_BUTTON_ENTITY if kind == "entity" else CONF_BUTTON_TOPIC] = source
-                options[CONF_BUTTON_MAP] = mapping
-                return self.async_create_entry(data=options)
-        shown = user_input or previous
-        schema = vol.Schema(
-            {
-                vol.Optional(a, description={"suggested_value": shown.get(a, "")}): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=known, custom_value=True, mode=selector.SelectSelectorMode.DROPDOWN
-                    )
-                )
-                for a in BUTTON_ACTIONS
-            }
-        )
-        return self.async_show_form(
-            step_id="button_actions",
-            data_schema=schema,
-            errors=errors,
-            description_placeholders={"entity": source, "known": ", ".join(known) or "–"},
+            description_placeholders={
+                "error_detail": detail if errors else "",
+                "webhook_url": _webhook_url(self.hass, webhook_id),
+                "known": ", ".join(known) or "–",
+            },
         )
