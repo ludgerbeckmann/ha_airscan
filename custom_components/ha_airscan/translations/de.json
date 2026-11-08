@@ -50,73 +50,68 @@
     "step": {
       "init": {
         "title": "Optionen",
-        "menu_options": {
-          "settings": "Scan & Paperless",
-          "notifications": "Benachrichtigungen",
-          "buttons": "Externe Taster"
-        }
-      },
-      "settings": {
-        "title": "Paperless-ngx",
-        "description": "Optional: leer lassen, um Paperless zu überspringen. Tags, Korrespondent und Dokumenttyp als numerische Paperless-IDs (Tags kommagetrennt).\n\n{error_detail}",
-        "data": {
-          "paperless_url": "Paperless-URL (z. B. http://paperless:8000)",
-          "paperless_token": "API-Token",
-          "tags": "Tag-IDs",
-          "correspondent": "Korrespondent-ID",
-          "document_type": "Dokumenttyp-ID",
-          "resolution": "Auflösung (dpi)",
-          "color_mode": "Farbmodus",
-          "batch_timeout": "Stapel vergessen nach (Minuten, 0 = aus)",
-          "batch_auto_send": "Vergessenen Stapel automatisch senden",
-          "paperless_verify_ssl": "SSL-Zertifikat prüfen",
-          "blank_detection": "Leerseiten erkennen und entfernen (Einzug und Flachbett)",
-          "blank_threshold": "Leerseiten-Schwelle (% Tintenanteil, höher = aggressiver)",
-          "page_size": "Papierformat",
-          "adf_align": "Papierlage im Einzug"
-        }
-      },
-      "notifications": {
-        "title": "Benachrichtigungen",
-        "description": "Wohin und welche Meldungen? Ohne Ziel wird nichts gesendet. „Testnachricht senden“ prüft die Ziele sofort.\n\nWebhook für Paperless-ngx (Workflow-Aktion „Webhook“, Methode POST, JSON): `{webhook_url}`",
-        "data": {
-          "notify_services": "Ziele (Benachrichtigungsdienste)",
-          "notify_entities": "Ziele (Benachrichtigungs-Entitäten)",
-          "notify_scan_types": "Scan-Meldungen",
-          "paperless_webhook": "Paperless-Webhook aktivieren",
-          "paperless_webhook_id": "Webhook-ID",
-          "notify_paperless_types": "Paperless-Meldungen",
-          "send_test": "Testnachricht senden"
-        },
-        "data_description": {
-          "notify_services": "z. B. mobile_app_iphone_ludger. Auch mehrere; „Benachrichtigung in Home Assistant“ erscheint in der Seitenleiste.",
-          "paperless_webhook_id": "Nur Buchstaben, Ziffern, _ und -. Nicht dieselbe ID wie eine bestehende Automation verwenden, die erst deaktiviert werden muss."
-        }
-      },
-      "buttons": {
-        "title": "Externe Taster",
-        "description": "Ein Taster oder eine Fernbedienung kann Scans starten. Es gibt zwei Wege, trage nur einen ein:\n\n• **MQTT-Thema** (empfohlen für Zigbee2MQTT, braucht keine Änderung an Zigbee2MQTT): `zigbee2mqtt/GERÄTENAME/action`, z. B. `zigbee2mqtt/Ikea Fernbedienung/action`.\n• **Entität**, die die Tastendrücke meldet (ZHA, Matter, oder Zigbee2MQTT mit eingeschalteten Event-Entitäten).\n\nBeides leer lassen und speichern schaltet die Funktion ab.",
-        "data": {
-          "button_entity": "Entität",
-          "button_topic": "MQTT-Thema"
-        },
-        "data_description": {
-          "button_topic": "Genau so, wie es in Zigbee2MQTT steht, mit dem Gerätenamen (keine Platzhalter # oder +)."
-        }
-      },
-      "button_actions": {
-        "title": "Tasten belegen",
-        "description": "Quelle: `{entity}`\nBekannte Werte: {known}\n\nTrage ein, welcher Wert welche Aktion startet. Jeder Wert darf nur einmal vorkommen. Beim IKEA-Taster sind das `open` und `close` (Groß-/Kleinschreibung egal). Was ein langer Druck sendet, siehst du in Zigbee2MQTT unter „Expose-Funktionen → Action“, während du die Taste drückst.",
-        "data": {
-          "adf": "Einzug scannen",
-          "platen": "Flachbett scannen (in den Stapel)",
-          "toggle_duplex": "Beidseitig umschalten",
-          "batch_send": "Stapel senden",
-          "batch_discard": "Stapel verwerfen"
-        },
-        "data_description": {
-          "adf": "Beidseitig oder einseitig, je nach Schalter „Einzug beidseitig (Taster)“.",
-          "toggle_duplex": "Stellt den Schalter „Einzug beidseitig (Taster)“ um, z. B. auf einen langen Druck."
+        "description": "{error_detail}",
+        "sections": {
+          "paperless": {
+            "name": "Paperless-ngx",
+            "description": "Optional: leer lassen, um Paperless zu überspringen. Tags, Korrespondent und Dokumenttyp als numerische Paperless-IDs (Tags kommagetrennt).",
+            "data": {
+              "paperless_url": "Paperless-URL (z. B. http://paperless:8000)",
+              "paperless_token": "API-Token",
+              "paperless_verify_ssl": "SSL-Zertifikat prüfen",
+              "tags": "Tag-IDs",
+              "correspondent": "Korrespondent-ID",
+              "document_type": "Dokumenttyp-ID"
+            }
+          },
+          "scan": {
+            "name": "Scan-Standardwerte",
+            "data": {
+              "resolution": "Auflösung (dpi)",
+              "color_mode": "Farbmodus",
+              "batch_timeout": "Stapel vergessen nach (Minuten, 0 = aus)",
+              "batch_auto_send": "Vergessenen Stapel automatisch senden",
+              "blank_detection": "Leerseiten erkennen und entfernen (Einzug und Flachbett)",
+              "blank_threshold": "Leerseiten-Schwelle (% Tintenanteil, höher = aggressiver)",
+              "page_size": "Papierformat",
+              "adf_align": "Papierlage im Einzug"
+            }
+          },
+          "notifications": {
+            "name": "Benachrichtigungen",
+            "description": "Wohin und welche Meldungen? Ohne Ziel wird nichts gesendet. „Testnachricht senden“ prüft die Ziele sofort.\n\nWebhook für Paperless-ngx (Workflow-Aktion „Webhook“, Methode POST, JSON): `{webhook_url}`",
+            "data": {
+              "notify_services": "Ziele (Benachrichtigungsdienste)",
+              "notify_entities": "Ziele (Benachrichtigungs-Entitäten)",
+              "notify_scan_types": "Scan-Meldungen",
+              "paperless_webhook": "Paperless-Webhook aktivieren",
+              "paperless_webhook_id": "Webhook-ID",
+              "notify_paperless_types": "Paperless-Meldungen",
+              "send_test": "Testnachricht senden"
+            },
+            "data_description": {
+              "notify_services": "z. B. mobile_app_mein_iphone. Auch mehrere; „Benachrichtigung in Home Assistant“ erscheint in der Seitenleiste.",
+              "paperless_webhook_id": "Nur Buchstaben, Ziffern, _ und -. Nicht dieselbe ID wie eine bestehende Automation verwenden, die erst deaktiviert werden muss."
+            }
+          },
+          "buttons": {
+            "name": "Externe Taster",
+            "description": "Ein Taster oder eine Fernbedienung kann Scans starten. Es gibt zwei Wege, trage nur einen ein:\n\n• **MQTT-Thema** (empfohlen für Zigbee2MQTT, braucht keine Änderung an Zigbee2MQTT): `zigbee2mqtt/GERÄTENAME/action`, z. B. `zigbee2mqtt/Ikea Fernbedienung/action`.\n• **Entität**, die die Tastendrücke meldet (ZHA, Matter, oder Zigbee2MQTT mit eingeschalteten Event-Entitäten).\n\nBeides leer lassen und speichern schaltet die Funktion ab.\n\nBekannte Werte: {known}\n\nTrage ein, welcher Wert welche Aktion startet. Jeder Wert darf nur einmal vorkommen. Beim IKEA-Taster sind das `open` und `close` (Groß-/Kleinschreibung egal). Was ein langer Druck sendet, siehst du in Zigbee2MQTT unter „Expose-Funktionen → Action“, während du die Taste drückst.",
+            "data": {
+              "button_entity": "Entität",
+              "button_topic": "MQTT-Thema",
+              "adf": "Einzug scannen",
+              "platen": "Flachbett scannen (in den Stapel)",
+              "toggle_duplex": "Beidseitig umschalten",
+              "batch_send": "Stapel senden",
+              "batch_discard": "Stapel verwerfen"
+            },
+            "data_description": {
+              "button_topic": "Genau so, wie es in Zigbee2MQTT steht, mit dem Gerätenamen (keine Platzhalter # oder +).",
+              "adf": "Beidseitig oder einseitig, je nach Schalter „Einzug beidseitig (Taster)“.",
+              "toggle_duplex": "Stellt den Schalter „Einzug beidseitig (Taster)“ um, z. B. auf einen langen Druck."
+            }
+          }
         }
       }
     },

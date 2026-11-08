@@ -2,7 +2,7 @@
 
 Zurück zur [Übersicht](../README.md).
 
-Ein Taster oder eine Fernbedienung kann Scans starten, ohne Automation: *Konfigurieren* → *Externe Taster*. Zuerst die Quelle wählen, danach jedem Wert eine Aktion zuordnen:
+Ein Taster oder eine Fernbedienung kann Scans starten, ohne Automation: *Konfigurieren* → Abschnitt *Externe Taster*. Zuerst die Quelle wählen, dann jedem Wert eine Aktion zuordnen:
 
 | Aktion | Wirkung |
 |---|---|

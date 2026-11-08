@@ -50,73 +50,68 @@
     "step": {
       "init": {
         "title": "Options",
-        "menu_options": {
-          "settings": "Scan & Paperless",
-          "notifications": "Notifications",
-          "buttons": "External buttons"
-        }
-      },
-      "settings": {
-        "title": "Paperless-ngx",
-        "description": "Optional: leave empty to skip Paperless. Tags, correspondent and document type are numeric Paperless IDs (tags comma-separated).\n\n{error_detail}",
-        "data": {
-          "paperless_url": "Paperless URL (e.g. http://paperless:8000)",
-          "paperless_token": "API-Token",
-          "tags": "Tag IDs",
-          "correspondent": "Correspondent ID",
-          "document_type": "Document type ID",
-          "resolution": "Resolution (dpi)",
-          "color_mode": "Color mode",
-          "batch_timeout": "Forgotten batch after (minutes, 0 = off)",
-          "batch_auto_send": "Send forgotten batch automatically",
-          "paperless_verify_ssl": "Verify SSL certificate",
-          "blank_detection": "Detect and remove blank pages (feeder and flatbed)",
-          "blank_threshold": "Blank page threshold (% ink, higher = more aggressive)",
-          "page_size": "Paper size",
-          "adf_align": "Sheet position in the feeder"
-        }
-      },
-      "notifications": {
-        "title": "Notifications",
-        "description": "Where to send which messages? Nothing is sent without a target. \"Send test message\" checks the targets right away.\n\nWebhook for Paperless-ngx (workflow action \"Webhook\", method POST, JSON): `{webhook_url}`",
-        "data": {
-          "notify_services": "Targets (notify services)",
-          "notify_entities": "Targets (notify entities)",
-          "notify_scan_types": "Scan messages",
-          "paperless_webhook": "Enable Paperless webhook",
-          "paperless_webhook_id": "Webhook ID",
-          "notify_paperless_types": "Paperless messages",
-          "send_test": "Send test message"
-        },
-        "data_description": {
-          "notify_services": "e.g. mobile_app_iphone_ludger. Several are possible; \"Benachrichtigung in Home Assistant\" shows in the sidebar.",
-          "paperless_webhook_id": "Letters, digits, _ and - only. Do not reuse the ID of an existing automation that is still switched on."
-        }
-      },
-      "buttons": {
-        "title": "External buttons",
-        "description": "A button or remote can start scans. There are two ways, enter only one:\n\n• **MQTT topic** (recommended for Zigbee2MQTT, no change to Zigbee2MQTT needed): `zigbee2mqtt/DEVICE_NAME/action`, e.g. `zigbee2mqtt/Ikea Fernbedienung/action`.\n• **Entity** that reports the presses (ZHA, Matter, or Zigbee2MQTT with event entities enabled).\n\nLeave both empty and save to switch the feature off.",
-        "data": {
-          "button_entity": "Entity",
-          "button_topic": "MQTT topic"
-        },
-        "data_description": {
-          "button_topic": "Exactly as in Zigbee2MQTT, with the device name (no wildcards # or +)."
-        }
-      },
-      "button_actions": {
-        "title": "Assign the buttons",
-        "description": "Source: `{entity}`\nKnown values: {known}\n\nEnter which value starts which action. Each value can be used once. For the IKEA remote these are `open` and `close` (case does not matter). In Zigbee2MQTT you can see what a long press sends under \"Exposes → Action\" while you press it.",
-        "data": {
-          "adf": "Scan feeder",
-          "platen": "Scan flatbed (into the batch)",
-          "toggle_duplex": "Toggle two-sided",
-          "batch_send": "Send batch",
-          "batch_discard": "Discard batch"
-        },
-        "data_description": {
-          "adf": "Two-sided or one-sided, depending on the \"Feeder two-sided (buttons)\" switch.",
-          "toggle_duplex": "Flips the \"Feeder two-sided (buttons)\" switch, e.g. on a long press."
+        "description": "{error_detail}",
+        "sections": {
+          "paperless": {
+            "name": "Paperless-ngx",
+            "description": "Optional: leave empty to skip Paperless. Tags, correspondent and document type are numeric Paperless IDs (tags comma-separated).",
+            "data": {
+              "paperless_url": "Paperless URL (e.g. http://paperless:8000)",
+              "paperless_token": "API-Token",
+              "paperless_verify_ssl": "Verify SSL certificate",
+              "tags": "Tag IDs",
+              "correspondent": "Correspondent ID",
+              "document_type": "Document type ID"
+            }
+          },
+          "scan": {
+            "name": "Scan defaults",
+            "data": {
+              "resolution": "Resolution (dpi)",
+              "color_mode": "Color mode",
+              "batch_timeout": "Forgotten batch after (minutes, 0 = off)",
+              "batch_auto_send": "Send forgotten batch automatically",
+              "blank_detection": "Detect and remove blank pages (feeder and flatbed)",
+              "blank_threshold": "Blank page threshold (% ink, higher = more aggressive)",
+              "page_size": "Paper size",
+              "adf_align": "Sheet position in the feeder"
+            }
+          },
+          "notifications": {
+            "name": "Notifications",
+            "description": "Where to send which messages? Nothing is sent without a target. \"Send test message\" checks the targets right away.\n\nWebhook for Paperless-ngx (workflow action \"Webhook\", method POST, JSON): `{webhook_url}`",
+            "data": {
+              "notify_services": "Targets (notify services)",
+              "notify_entities": "Targets (notify entities)",
+              "notify_scan_types": "Scan messages",
+              "paperless_webhook": "Enable Paperless webhook",
+              "paperless_webhook_id": "Webhook ID",
+              "notify_paperless_types": "Paperless messages",
+              "send_test": "Send test message"
+            },
+            "data_description": {
+              "notify_services": "e.g. mobile_app_mein_iphone. Several are possible; \"Benachrichtigung in Home Assistant\" shows in the sidebar.",
+              "paperless_webhook_id": "Letters, digits, _ and - only. Do not reuse the ID of an existing automation that is still switched on."
+            }
+          },
+          "buttons": {
+            "name": "External buttons",
+            "description": "A button or remote can start scans. There are two ways, enter only one:\n\n• **MQTT topic** (recommended for Zigbee2MQTT, no change to Zigbee2MQTT needed): `zigbee2mqtt/DEVICE_NAME/action`, e.g. `zigbee2mqtt/Ikea Fernbedienung/action`.\n• **Entity** that reports the presses (ZHA, Matter, or Zigbee2MQTT with event entities enabled).\n\nLeave both empty and save to switch the feature off.\n\nKnown values: {known}\n\nEnter which value starts which action. Each value can be used once. For the IKEA remote these are `open` and `close` (case does not matter). In Zigbee2MQTT you can see what a long press sends under \"Exposes → Action\" while you press it.",
+            "data": {
+              "button_entity": "Entity",
+              "button_topic": "MQTT topic",
+              "adf": "Scan feeder",
+              "platen": "Scan flatbed (into the batch)",
+              "toggle_duplex": "Toggle two-sided",
+              "batch_send": "Send batch",
+              "batch_discard": "Discard batch"
+            },
+            "data_description": {
+              "button_topic": "Exactly as in Zigbee2MQTT, with the device name (no wildcards # or +).",
+              "adf": "Two-sided or one-sided, depending on the \"Feeder two-sided (buttons)\" switch.",
+              "toggle_duplex": "Flips the \"Feeder two-sided (buttons)\" switch, e.g. on a long press."
+            }
+          }
         }
       }
     },
