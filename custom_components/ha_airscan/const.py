@@ -45,6 +45,7 @@ EVENT_PRINTER_OFFLINE = "ha_airscan_printer_offline"
 
 CONF_NOTIFY_SERVICES = "notify_services"
 CONF_NOTIFY_ENTITIES = "notify_entities"
+CONF_NOTIFY_TARGETS = "notify_targets"
 CONF_NOTIFY_SCAN_TYPES = "notify_scan_types"
 CONF_NOTIFY_PAPERLESS_TYPES = "notify_paperless_types"
 CONF_PAPERLESS_WEBHOOK = "paperless_webhook"
@@ -53,6 +54,7 @@ PERSISTENT_NOTIFICATION = "persistent_notification"
 DEFAULT_NOTIFY_SCAN_TYPES = ["scan_error", "queued", "batch_stale", "printer_offline"]
 DEFAULT_NOTIFY_PAPERLESS_TYPES = ["neu", "frist"]
 SERVICE_RETRY_QUEUE = "retry_queue"
+SERVICE_SEND_TEST = "send_test"
 
 CONF_BUTTON_ENTITY = "button_entity"
 CONF_BUTTON_MAP = "button_map"

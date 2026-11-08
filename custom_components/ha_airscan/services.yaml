@@ -124,3 +124,10 @@ retry_queue:
       selector:
         config_entry:
           integration: ha_airscan
+
+send_test:
+  fields:
+    config_entry:
+      selector:
+        config_entry:
+          integration: ha_airscan

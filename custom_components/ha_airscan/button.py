@@ -6,6 +6,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -15,6 +16,7 @@ from homeassistant.helpers import entity_registry as er
 from . import AirscanConfigEntry
 from .const import DOMAIN
 from .delivery import async_retry_queue
+from .notifications import async_send_test_to_entry
 from .scan import async_batch_add, async_batch_discard, async_batch_send, async_scan
 
 
@@ -46,6 +48,11 @@ BUTTONS = (
     AirscanButtonDescription(
         key="batch_discard", translation_key="batch_discard", needs="platen",
         action=lambda h, e: async_batch_discard(h, e),
+    ),
+    AirscanButtonDescription(
+        key="send_test", translation_key="send_test", needs=None,
+        entity_category=EntityCategory.CONFIG,
+        action=lambda h, e: async_send_test_to_entry(h, e),
     ),
     AirscanButtonDescription(
         key="retry_queue", translation_key="retry_queue", needs=None,

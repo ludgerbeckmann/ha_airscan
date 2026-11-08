@@ -29,6 +29,7 @@ from .const import (
     CONF_NOTIFY_PAPERLESS_TYPES,
     CONF_NOTIFY_SCAN_TYPES,
     CONF_NOTIFY_SERVICES,
+    CONF_NOTIFY_TARGETS,
     CONF_PAPERLESS_WEBHOOK,
     CONF_PAPERLESS_WEBHOOK_ID,
     DEFAULT_NOTIFY_PAPERLESS_TYPES,
@@ -63,7 +64,6 @@ from .blank import DEFAULT_INK_PERCENT
 from .button_map import BUTTON_ACTIONS, duplicate_values, valid_topic, values_of
 from .escl import EsclClient, EsclError
 from .notify_messages import PAPERLESS_TYPES, SCAN_TYPES
-from .notifications import async_send_test
 from .paperless import PaperlessAuthError, PaperlessClient, PaperlessError
 
 _LOGGER = logging.getLogger(__name__)
@@ -238,27 +238,49 @@ class AirscanConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
 
-def _notify_services(hass: HomeAssistant, current: list[str]) -> list[dict[str, str]]:
-    """notify.* services that exist right now (plus what is already selected)."""
+def _notify_targets(hass: HomeAssistant, d: dict[str, Any]) -> list[dict[str, str]]:
+    """notify services and notify entities in one list (entity ids contain a dot)."""
     services = hass.services.async_services_for_domain("notify")
     names = sorted(s for s in services if s not in ("send_message", PERSISTENT_NOTIFICATION))
-    names += [c for c in current if c not in names and c != PERSISTENT_NOTIFICATION]
-    return [{"value": PERSISTENT_NOTIFICATION, "label": "Benachrichtigung in Home Assistant"}] + [
-        {"value": n, "label": n} for n in names
-    ]
+    chosen_services = [c for c in d.get(CONF_NOTIFY_SERVICES, []) if c != PERSISTENT_NOTIFICATION]
+    names += [c for c in chosen_services if c not in names]
+    options = [{"value": PERSISTENT_NOTIFICATION, "label": "Benachrichtigung in Home Assistant"}]
+    options += [{"value": n, "label": n} for n in names]
+    entity_ids = set(hass.states.async_entity_ids("notify")) | set(d.get(CONF_NOTIFY_ENTITIES, []))
+    for entity_id in sorted(entity_ids):
+        state = hass.states.get(entity_id)
+        label = state.name if state else entity_id
+        options.append({"value": entity_id, "label": f"{label} ({entity_id})"})
+    return options
+
+
+def _targets_value(d: dict[str, Any]) -> list[str]:
+    return list(d.get(CONF_NOTIFY_SERVICES, [])) + list(d.get(CONF_NOTIFY_ENTITIES, []))
+
+
+def _split_targets(hass: HomeAssistant, values: list[str]) -> tuple[list[str], list[str]]:
+    """Back into (services, entities); 'notify.x' is an entity if it exists, else a service name."""
+    services: list[str] = []
+    entities: list[str] = []
+    for value in values:
+        value = str(value).strip()
+        if not value:
+            continue
+        if "." in value and hass.states.get(value) is not None:
+            entities.append(value)
+        else:
+            services.append(value.removeprefix("notify."))
+    return services, entities
 
 
 def _notify_schema(hass: HomeAssistant, d: dict[str, Any]) -> vol.Schema:
     return vol.Schema(
         {
-            vol.Optional(CONF_NOTIFY_SERVICES, default=d.get(CONF_NOTIFY_SERVICES, [])): selector.SelectSelector(
+            vol.Optional(CONF_NOTIFY_TARGETS, default=_targets_value(d)): selector.SelectSelector(
                 selector.SelectSelectorConfig(
-                    options=_notify_services(hass, d.get(CONF_NOTIFY_SERVICES, [])),
+                    options=_notify_targets(hass, d),
                     multiple=True, custom_value=True, mode=selector.SelectSelectorMode.DROPDOWN,
                 )
-            ),
-            vol.Optional(CONF_NOTIFY_ENTITIES, default=d.get(CONF_NOTIFY_ENTITIES, [])): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="notify", multiple=True)
             ),
             vol.Optional(
                 CONF_NOTIFY_SCAN_TYPES, default=d.get(CONF_NOTIFY_SCAN_TYPES, DEFAULT_NOTIFY_SCAN_TYPES)
@@ -281,7 +303,6 @@ def _notify_schema(hass: HomeAssistant, d: dict[str, Any]) -> vol.Schema:
                     mode=selector.SelectSelectorMode.LIST,
                 )
             ),
-            vol.Optional("send_test", default=False): bool,
         }
     )
 
@@ -372,6 +393,8 @@ class AirscanOptionsFlow(OptionsFlow):
         detail = ""
         if user_input is not None:
             flat = _flatten(user_input)
+            services, entities = _split_targets(self.hass, flat.pop(CONF_NOTIFY_TARGETS, []))
+            flat[CONF_NOTIFY_SERVICES], flat[CONF_NOTIFY_ENTITIES] = services, entities
             current = {**saved, **flat}
             entity, topic, mapping = flat[CONF_BUTTON_ENTITY], flat[CONF_BUTTON_TOPIC], flat[CONF_BUTTON_MAP]
             webhook_id = str(flat.get(CONF_PAPERLESS_WEBHOOK_ID, "")).strip()
@@ -389,20 +412,16 @@ class AirscanOptionsFlow(OptionsFlow):
             elif (entity or topic) and not any(mapping.values()):
                 errors["base"] = "no_button_mapping"
             else:
-                options = {**saved, **{k: v for k, v in flat.items() if k != "send_test"}}
+                options = {**saved, **flat}
                 options[CONF_PAPERLESS_WEBHOOK_ID] = webhook_id
                 for key in (CONF_BUTTON_ENTITY, CONF_BUTTON_TOPIC, CONF_BUTTON_MAP):
                     options.pop(key, None)
                 if entity or topic:
                     options[CONF_BUTTON_ENTITY if entity else CONF_BUTTON_TOPIC] = entity or topic
                     options[CONF_BUTTON_MAP] = mapping
-                if flat.get("send_test"):
-                    if await async_send_test(self.hass, options, self.config_entry.entry_id):
-                        errors["base"] = "test_failed"
-                if not errors:
-                    return self.async_create_entry(data=options)
+                return self.async_create_entry(data=options)
         webhook_id = current.get(CONF_PAPERLESS_WEBHOOK_ID) or f"paperless_{secrets.token_hex(8)}"
-        current = {**current, CONF_PAPERLESS_WEBHOOK_ID: webhook_id, "send_test": False}
+        current = {**current, CONF_PAPERLESS_WEBHOOK_ID: webhook_id}
         source = current.get(CONF_BUTTON_ENTITY)
         state = self.hass.states.get(source) if source else None
         known = values_of(dict(state.attributes)) if state else []

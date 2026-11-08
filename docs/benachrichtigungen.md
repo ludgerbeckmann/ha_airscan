@@ -6,7 +6,7 @@ Einstellungen → Geräte & Dienste → Scan to Paperless → *Konfigurieren* �
 
 ## Ziele
 
-Beliebig viele Benachrichtigungsdienste (z. B. `mobile_app_mein_iphone`, Telegram), „Benachrichtigung in Home Assistant“ (Seitenleiste) und Benachrichtigungs-Entitäten (`notify.*`). Ein Ziel, das einmal nicht antwortet, hält die anderen nicht auf. Mit **„Testnachricht senden“** prüfst du die Ziele sofort.
+Eine gemeinsame Auswahl „Ziele“: Benachrichtigungsdienste (z. B. `mobile_app_mein_iphone`), „Benachrichtigung in Home Assistant“ (Seitenleiste) und Benachrichtigungs-Entitäten (`notify.*`), beliebig viele. Ein Ziel, das einmal nicht antwortet, hält die anderen nicht auf. Mit der Schaltfläche **„Testnachricht senden“** am Gerät (oder dem Dienst `ha_airscan.send_test`) prüfst du die Ziele sofort.
 
 Nur die Home-Assistant-App bekommt die Zusatzfelder (Link, Priorität „zeitkritisch“, Knöpfe); andere Dienste bekommen nur Titel und Text.
 
