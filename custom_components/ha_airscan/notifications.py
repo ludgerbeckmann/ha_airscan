@@ -153,6 +153,15 @@ async def async_send_message(hass: HomeAssistant, options: Mapping[str, Any], en
     return failures
 
 
+async def async_send_test_to_entry(hass: HomeAssistant, entry: "AirscanConfigEntry", **_: Any) -> None:
+    """Test message to the saved targets (button and service)."""
+    options = entry.options
+    if not (options.get(CONF_NOTIFY_SERVICES) or options.get(CONF_NOTIFY_ENTITIES)):
+        raise HomeAssistantError("Kein Ziel für Benachrichtigungen eingetragen (Konfigurieren → Benachrichtigungen)")
+    if await async_send_test(hass, options, entry.entry_id):
+        raise HomeAssistantError("Mindestens ein Ziel hat die Testnachricht nicht angenommen (siehe Log)")
+
+
 async def async_send_test(hass: HomeAssistant, options: Mapping[str, Any], entry_id: str) -> int:
     """Test message for the options dialog."""
     text = ("Testnachricht", "Die Benachrichtigungen von Scan to Paperless funktionieren.") \

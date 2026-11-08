@@ -79,18 +79,16 @@
           },
           "notifications": {
             "name": "Benachrichtigungen",
-            "description": "Wohin und welche Meldungen? Ohne Ziel wird nichts gesendet. „Testnachricht senden“ prüft die Ziele sofort.\n\nWebhook für Paperless-ngx (Workflow-Aktion „Webhook“, Methode POST, JSON): `{webhook_url}`",
+            "description": "Wohin und welche Meldungen? Ohne Ziel wird nichts gesendet. Zum Prüfen der Ziele die Schaltfläche „Testnachricht senden“ am Gerät verwenden.\n\nWebhook für Paperless-ngx (Workflow „Dokument hinzugefügt“, Aktion „Webhook“, Methode POST, JSON): `{webhook_url}`",
             "data": {
-              "notify_services": "Ziele (Benachrichtigungsdienste)",
-              "notify_entities": "Ziele (Benachrichtigungs-Entitäten)",
+              "notify_targets": "Ziele",
               "notify_scan_types": "Scan-Meldungen",
               "paperless_webhook": "Paperless-Webhook aktivieren",
               "paperless_webhook_id": "Webhook-ID",
-              "notify_paperless_types": "Paperless-Meldungen",
-              "send_test": "Testnachricht senden"
+              "notify_paperless_types": "Paperless-Meldungen"
             },
             "data_description": {
-              "notify_services": "z. B. mobile_app_mein_iphone. Auch mehrere; „Benachrichtigung in Home Assistant“ erscheint in der Seitenleiste.",
+              "notify_targets": "Eine Auswahl aus Benachrichtigungsdiensten (z. B. mobile_app_mein_iphone) und -Entitäten. Auch mehrere; „Benachrichtigung in Home Assistant“ erscheint in der Seitenleiste. Nur Dienste der Handy-App bekommen die Knöpfe „Senden/Verwerfen“.",
               "paperless_webhook_id": "Nur Buchstaben, Ziffern, _ und -. Nicht dieselbe ID wie eine bestehende Automation verwenden, die erst deaktiviert werden muss."
             }
           },
@@ -146,6 +144,9 @@
       },
       "retry_queue": {
         "name": "Warteschlange jetzt senden"
+      },
+      "send_test": {
+        "name": "Testnachricht senden"
       }
     },
     "sensor": {
@@ -372,6 +373,16 @@
     "retry_queue": {
       "name": "Warteschlange senden",
       "description": "Versucht sofort, wartende Scans an Paperless zu übertragen.",
+      "fields": {
+        "config_entry": {
+          "name": "Scanner",
+          "description": "Bei mehreren Scannern auswählen."
+        }
+      }
+    },
+    "send_test": {
+      "name": "Testnachricht senden",
+      "description": "Schickt eine Testnachricht an die eingetragenen Benachrichtigungsziele.",
       "fields": {
         "config_entry": {
           "name": "Scanner",

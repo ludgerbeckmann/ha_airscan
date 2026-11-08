@@ -42,11 +42,12 @@ from .const import (
     SERVICE_BATCH_SEND,
     SERVICE_RETRY_QUEUE,
     SERVICE_SCAN,
+    SERVICE_SEND_TEST,
     SOURCES,
 )
 from .escl import Capabilities, EsclClient, EsclError, Status
 from .delivery import STARTUP_DELAY, Outbox, async_retry_queue
-from .notifications import Notifier
+from .notifications import Notifier, async_send_test_to_entry
 from .paperless import PaperlessClient
 from .scan import async_batch_add, async_batch_discard, async_batch_send, async_scan
 from .state import ScanTracker
@@ -221,6 +222,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirscanConfigEntry) -> b
         _register(SERVICE_BATCH_SEND, async_batch_send, BATCH_SEND_SCHEMA, True)
         _register(SERVICE_BATCH_DISCARD, async_batch_discard, BATCH_DISCARD_SCHEMA)
         _register(SERVICE_RETRY_QUEUE, async_retry_queue, BATCH_DISCARD_SCHEMA, True)
+        _register(SERVICE_SEND_TEST, async_send_test_to_entry, BATCH_DISCARD_SCHEMA)
     return True
 
 
@@ -237,6 +239,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: AirscanConfigEntry) -> 
         e.entry_id != entry.entry_id and e.state.value == "loaded"
         for e in hass.config_entries.async_entries(DOMAIN)
     ):
-        for service in (SERVICE_SCAN, SERVICE_BATCH_ADD, SERVICE_BATCH_SEND, SERVICE_BATCH_DISCARD, SERVICE_RETRY_QUEUE):
+        for service in (SERVICE_SCAN, SERVICE_BATCH_ADD, SERVICE_BATCH_SEND, SERVICE_BATCH_DISCARD, SERVICE_RETRY_QUEUE, SERVICE_SEND_TEST):
             hass.services.async_remove(DOMAIN, service)
     return unloaded

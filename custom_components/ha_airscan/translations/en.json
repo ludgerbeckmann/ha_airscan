@@ -79,18 +79,16 @@
           },
           "notifications": {
             "name": "Notifications",
-            "description": "Where to send which messages? Nothing is sent without a target. \"Send test message\" checks the targets right away.\n\nWebhook for Paperless-ngx (workflow action \"Webhook\", method POST, JSON): `{webhook_url}`",
+            "description": "Where to send which messages? Nothing is sent without a target. To check the targets use the \"Send test message\" button on the device.\n\nWebhook for Paperless-ngx (workflow \"Document added\", action \"Webhook\", method POST, JSON): `{webhook_url}`",
             "data": {
-              "notify_services": "Targets (notify services)",
-              "notify_entities": "Targets (notify entities)",
+              "notify_targets": "Targets",
               "notify_scan_types": "Scan messages",
               "paperless_webhook": "Enable Paperless webhook",
               "paperless_webhook_id": "Webhook ID",
-              "notify_paperless_types": "Paperless messages",
-              "send_test": "Send test message"
+              "notify_paperless_types": "Paperless messages"
             },
             "data_description": {
-              "notify_services": "e.g. mobile_app_mein_iphone. Several are possible; \"Benachrichtigung in Home Assistant\" shows in the sidebar.",
+              "notify_targets": "A choice of notify services (e.g. mobile_app_my_iphone) and notify entities. Several are possible; \"Benachrichtigung in Home Assistant\" shows in the sidebar. Only mobile app services get the Send/Discard buttons.",
               "paperless_webhook_id": "Letters, digits, _ and - only. Do not reuse the ID of an existing automation that is still switched on."
             }
           },
@@ -146,6 +144,9 @@
       },
       "retry_queue": {
         "name": "Send queue now"
+      },
+      "send_test": {
+        "name": "Send test message"
       }
     },
     "sensor": {
@@ -372,6 +373,16 @@
     "retry_queue": {
       "name": "Send queue",
       "description": "Immediately tries to upload waiting scans to Paperless.",
+      "fields": {
+        "config_entry": {
+          "name": "Scanner",
+          "description": "Select when you have several scanners."
+        }
+      }
+    },
+    "send_test": {
+      "name": "Send test message",
+      "description": "Sends a test message to the configured notification targets.",
       "fields": {
         "config_entry": {
           "name": "Scanner",

@@ -6,7 +6,7 @@ Zurück zur [Übersicht](../README.md).
 
 | Entität | Beschreibung |
 |---|---|
-| Buttons | Scan Flachbett / Einzug (einseitig) / Einzug (beidseitig), Stapel senden / verwerfen, Warteschlange jetzt senden |
+| Buttons | Scan Flachbett / Einzug (einseitig) / Einzug (beidseitig), Stapel senden / verwerfen, Warteschlange jetzt senden, Testnachricht senden (Konfiguration) |
 | Sensor *Status* | `idle` (Bereit), `batch` (Stapel offen), `running` (Läuft), `done` (Fertig), `queued` (Wartet auf Paperless), `error` (Fehler) |
 | Sensor *Letzter Scan* | Zeitpunkt, an dem der letzte Scan abgeschlossen wurde (bleibt nach einem Neustart erhalten) |
 | Sensor *Warteschlange* | Anzahl der Scans, die auf Paperless warten (Attribute: Fehlergrund, nächster Versuch) |
@@ -25,6 +25,7 @@ Attribute des Status-Sensors: `detail` (Klartext), `pages`, `batch_pages`, `batc
 | `ha_airscan.batch_send` | Stapel als ein PDF senden |
 | `ha_airscan.batch_discard` | Stapel verwerfen |
 | `ha_airscan.retry_queue` | Wartende Scans sofort an Paperless senden |
+| `ha_airscan.send_test` | Testnachricht an die Benachrichtigungsziele |
 
 Bei mehreren Scannern zusätzlich `config_entry`. Beispiel:
 
