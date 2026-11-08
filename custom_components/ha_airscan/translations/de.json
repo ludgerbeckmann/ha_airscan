@@ -95,7 +95,7 @@
       },
       "buttons": {
         "title": "Externe Taster",
-        "description": "Ein Taster oder eine Fernbedienung kann Scans starten. Es gibt zwei Wege, trage nur einen ein:\n\n• **MQTT-Thema** (empfohlen für Zigbee2MQTT, braucht keine Änderung an Zigbee2MQTT): `zigbee2mqtt/<Gerätename>/action`, z. B. `zigbee2mqtt/Ikea Fernbedienung/action`.\n• **Entität**, die die Tastendrücke meldet (ZHA, Matter, oder Zigbee2MQTT mit eingeschalteten Event-Entitäten).\n\nBeides leer lassen und speichern schaltet die Funktion ab.",
+        "description": "Ein Taster oder eine Fernbedienung kann Scans starten. Es gibt zwei Wege, trage nur einen ein:\n\n• **MQTT-Thema** (empfohlen für Zigbee2MQTT, braucht keine Änderung an Zigbee2MQTT): `zigbee2mqtt/GERÄTENAME/action`, z. B. `zigbee2mqtt/Ikea Fernbedienung/action`.\n• **Entität**, die die Tastendrücke meldet (ZHA, Matter, oder Zigbee2MQTT mit eingeschalteten Event-Entitäten).\n\nBeides leer lassen und speichern schaltet die Funktion ab.",
         "data": {
           "button_entity": "Entität",
           "button_topic": "MQTT-Thema"

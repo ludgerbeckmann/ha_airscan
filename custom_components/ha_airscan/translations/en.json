@@ -95,7 +95,7 @@
       },
       "buttons": {
         "title": "External buttons",
-        "description": "A button or remote can start scans. There are two ways, enter only one:\n\n• **MQTT topic** (recommended for Zigbee2MQTT, no change to Zigbee2MQTT needed): `zigbee2mqtt/<device name>/action`, e.g. `zigbee2mqtt/Ikea Fernbedienung/action`.\n• **Entity** that reports the presses (ZHA, Matter, or Zigbee2MQTT with event entities enabled).\n\nLeave both empty and save to switch the feature off.",
+        "description": "A button or remote can start scans. There are two ways, enter only one:\n\n• **MQTT topic** (recommended for Zigbee2MQTT, no change to Zigbee2MQTT needed): `zigbee2mqtt/DEVICE_NAME/action`, e.g. `zigbee2mqtt/Ikea Fernbedienung/action`.\n• **Entity** that reports the presses (ZHA, Matter, or Zigbee2MQTT with event entities enabled).\n\nLeave both empty and save to switch the feature off.",
         "data": {
           "button_entity": "Entity",
           "button_topic": "MQTT topic"
