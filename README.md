@@ -1,4 +1,4 @@
-# Scan to Paperless
+[![Validate](https://img.shields.io/github/actions/workflow/status/ludgerbeckmann/ha_airscan/validate.yml?branch=main&label=Validate)](https://github.com/ludgerbeckmann/ha_airscan/actions/workflows/validate.yml) [![Release](https://img.shields.io/github/v/release/ludgerbeckmann/ha_airscan)](https://github.com/ludgerbeckmann/ha_airscan/releases/latest) [![Lizenz: MIT](https://img.shields.io/github/license/ludgerbeckmann/ha_airscan)](https://github.com/ludgerbeckmann/ha_airscan/blob/main/LICENSE) ![Home Assistant 2024.11+](https://img.shields.io/badge/Home%20Assistant-2024.11%2B-blue) ![HACS](https://img.shields.io/badge/HACS-Custom-orange) [![Issues](https://img.shields.io/github/issues/ludgerbeckmann/ha_airscan)](https://github.com/ludgerbeckmann/ha_airscan/issues)
 
 Scannt über eSCL/AirScan direkt aus Home Assistant – vom Flachbett oder Einzug (einseitig/duplex) – und legt die PDFs in Paperless-ngx ab.
 
