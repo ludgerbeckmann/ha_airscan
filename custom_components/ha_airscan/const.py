@@ -42,6 +42,7 @@ EVENT_BATCH_STALE = "ha_airscan_batch_stale"
 EVENT_QUEUE_DELIVERED = "ha_airscan_queue_delivered"
 EVENT_SCAN_FAILED = "ha_airscan_scan_failed"
 EVENT_PRINTER_OFFLINE = "ha_airscan_printer_offline"
+EVENT_BUTTON_REJECTED = "ha_airscan_button_rejected"
 
 CONF_NOTIFY_SERVICES = "notify_services"
 CONF_NOTIFY_ENTITIES = "notify_entities"
@@ -51,7 +52,7 @@ CONF_NOTIFY_PAPERLESS_TYPES = "notify_paperless_types"
 CONF_PAPERLESS_WEBHOOK = "paperless_webhook"
 CONF_PAPERLESS_WEBHOOK_ID = "paperless_webhook_id"
 PERSISTENT_NOTIFICATION = "persistent_notification"
-DEFAULT_NOTIFY_SCAN_TYPES = ["scan_error", "queued", "batch_stale", "printer_offline"]
+DEFAULT_NOTIFY_SCAN_TYPES = ["scan_error", "queued", "batch_stale", "printer_offline", "button_rejected"]
 DEFAULT_NOTIFY_PAPERLESS_TYPES = ["neu", "frist"]
 SERVICE_RETRY_QUEUE = "retry_queue"
 SERVICE_SEND_TEST = "send_test"

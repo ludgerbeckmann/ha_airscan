@@ -631,6 +631,9 @@ def test_notification_texts():
     stale = nm.scan_message("batch_stale", {"batch_pages": 3})
     assert stale["actions"] and "3 Seiten" in stale["message"]
     assert nm.scan_message("printer_offline", {})["message"].startswith("Ist der Drucker eingeschaltet")
+    rejected = nm.scan_message("button_rejected", {"action": "adf"})
+    assert rejected["title"] == "Taster ignoriert" and not rejected["actions"]
+    assert nm.scan_message("button_rejected", {}, "en")["title"] == "Button ignored"
     assert nm.action_labels("de") == ("Senden", "Verwerfen")
 
 
@@ -716,7 +719,8 @@ def test_notifier(monkeypatch):
         n = notifications.Notifier(hass, entry)
         n.async_start()
         assert {t for t, _ in hass.bus.listeners} >= {"ha_airscan_scan_finished", "ha_airscan_scan_failed", "ha_airscan_queue_delivered",
-                                                         "ha_airscan_batch_stale", "ha_airscan_printer_offline", "mobile_app_notification_action"}
+                                                         "ha_airscan_batch_stale", "ha_airscan_printer_offline", "ha_airscan_button_rejected",
+                                                         "mobile_app_notification_action"}
 
         def fire(event_type, data):
             for t, handler in hass.bus.listeners:
@@ -832,6 +836,9 @@ def test_button_triggers(monkeypatch):
     class HAError(Exception):
         pass
 
+    class Busy(HAError):
+        pass
+
     def mod(name, **attrs):
         m = _types.ModuleType(name)
         m.__dict__.update(attrs)
@@ -868,7 +875,7 @@ def test_button_triggers(monkeypatch):
     async def scan(hass, entry, **kw):
         calls.append(("scan", kw))
         if fail["scan"]:
-            raise HAError("Es läuft bereits ein Scan")
+            raise Busy("Es läuft bereits ein Scan")
 
     async def add(hass, entry, **kw):
         calls.append(("batch_add", kw))
@@ -880,7 +887,7 @@ def test_button_triggers(monkeypatch):
         calls.append(("batch_discard", kw))
 
     monkeypatch.setitem(sys.modules, "airscan_pkg.scan", _types.SimpleNamespace(
-        async_scan=scan, async_batch_add=add, async_batch_send=send, async_batch_discard=discard))
+        ScannerBusy=Busy, async_scan=scan, async_batch_add=add, async_batch_send=send, async_batch_discard=discard))
     triggers = _load("triggers")
 
     class Tracker:
@@ -890,9 +897,12 @@ def test_button_triggers(monkeypatch):
         def update(self, *a, **k):
             self.updates += 1
 
+    fired = []
+
     class Hass:
         def __init__(self):
             self.tasks = []
+            self.bus = SimpleNamespace(async_fire=lambda event, data: fired.append((event, data)))
 
         def async_create_task(self, coro):
             self.tasks.append(coro)
@@ -900,6 +910,7 @@ def test_button_triggers(monkeypatch):
     async def go():
         tracker = Tracker()
         entry = SimpleNamespace(
+            entry_id="E1",
             options={"button_entity": "event.remote_action",
                      "button_map": {"adf": "open", "platen": "close", "toggle_duplex": "stop", "batch_send": "", "batch_discard": ""}},
             runtime_data=SimpleNamespace(tracker=tracker, capabilities=SimpleNamespace(adf_duplex=object())),
@@ -940,6 +951,8 @@ def test_button_triggers(monkeypatch):
         calls.clear()
         await press("open", advance=3.0)
         assert len(calls) == 1
+        # ...and a press that is turned away because the scanner is busy is reported (a button has no screen)
+        assert fired == [("ha_airscan_button_rejected", {"entry_id": "E1", "action": "adf", "detail": "Es läuft bereits ein Scan"})]
 
         # a scanner without duplex never asks for it, even if the switch state says so
         tracker.duplex_default = True

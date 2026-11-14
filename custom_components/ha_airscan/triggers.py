@@ -11,8 +11,8 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.event import async_track_state_change_event
 
 from .button_map import Debounce, action_for, topic_value, trigger_value
-from .const import CONF_BUTTON_ENTITY, CONF_BUTTON_MAP, CONF_BUTTON_TOPIC
-from .scan import async_batch_add, async_batch_discard, async_batch_send, async_scan
+from .const import CONF_BUTTON_ENTITY, CONF_BUTTON_MAP, CONF_BUTTON_TOPIC, EVENT_BUTTON_REJECTED
+from .scan import ScannerBusy, async_batch_add, async_batch_discard, async_batch_send, async_scan
 
 if TYPE_CHECKING:
     from . import AirscanConfigEntry
@@ -79,5 +79,8 @@ class ButtonTriggers:
             elif action == "toggle_duplex":
                 data.tracker.duplex_default = not data.tracker.duplex_default
                 data.tracker.update()
-        except HomeAssistantError as err:   # e.g. a scan is already running; failed scans also set the status
+        except ScannerBusy as err:   # still scanning: tell the user, a button has no screen
+            _LOGGER.info("Button action %s ignored: %s", action, err)
+            self._hass.bus.async_fire(EVENT_BUTTON_REJECTED, {"entry_id": self._entry.entry_id, "action": action, "detail": str(err)})
+        except HomeAssistantError as err:   # failed scans also set the status
             _LOGGER.warning("Button action %s did not run: %s", action, err)

@@ -93,9 +93,24 @@ def _source_caps(data: AirscanData, source: str, duplex: bool) -> SourceCaps:
     return src
 
 
+class ScannerBusy(HomeAssistantError):
+    """A scan or batch action is still running (the scanner is in use)."""
+
+
 def _acquire(data: AirscanData) -> None:
     if data.lock.locked():
-        raise HomeAssistantError("Es läuft bereits ein Scan")
+        raise ScannerBusy("Es läuft bereits ein Scan")
+
+
+def _begin(data: AirscanData) -> int:
+    """Call with the lock held: numbers this scan so that a slower, older one cannot overwrite the status."""
+    data.scan_seq += 1
+    return data.scan_seq
+
+
+def _current(data: AirscanData, seq: int | None) -> bool:
+    """True if this scan still owns the status display (no newer scan has started)."""
+    return seq is None or (seq == data.scan_seq and not data.lock.locked())
 
 
 async def _prepare_adf(data: AirscanData) -> None:
@@ -220,7 +235,6 @@ async def _deliver(
             result["queued"] = True
             result["queue_error"] = str(err)
             return result
-        await wait_for_paperless(data, result)
     else:
         target = Path(directory) / filename
         try:
@@ -231,14 +245,15 @@ async def _deliver(
     return result
 
 
-async def wait_for_paperless(data: AirscanData, result: dict) -> None:
+async def wait_for_paperless(data: AirscanData, result: dict, seq: int | None = None) -> None:
     """Report 'done' only once Paperless has really ingested the document.
 
     The upload returns as soon as Paperless queued the file; OCR and duplicate
     checks run afterwards and can still fail. Tokens without access to the task
     list are fine: we then just keep the upload as success.
     """
-    data.tracker.update(detail="Paperless verarbeitet das Dokument…")
+    if _current(data, seq):
+        data.tracker.update(detail="Paperless verarbeitet das Dokument…")
     deadline = asyncio.get_running_loop().time() + PAPERLESS_TASK_TIMEOUT
     while asyncio.get_running_loop().time() < deadline:
         try:
@@ -256,6 +271,18 @@ async def wait_for_paperless(data: AirscanData, result: dict) -> None:
             return
         await asyncio.sleep(PAPERLESS_TASK_INTERVAL)
     result["paperless_pending"] = True  # still being processed; not an error
+
+
+async def _complete(hass: HomeAssistant, entry: AirscanConfigEntry, result: dict, seq: int) -> None:
+    """After the lock is released: wait until Paperless has ingested the document, then report."""
+    data = entry.runtime_data
+    try:
+        if result.get("task_id"):
+            await wait_for_paperless(data, result, seq)
+    except HomeAssistantError as err:
+        raise _fail(hass, entry, err, seq) from err
+    _finish(hass, entry, result, seq)
+    await data.coordinator.async_request_refresh()
 
 
 def _blank_enabled(entry: AirscanConfigEntry, skip_blank: bool | None) -> bool:
@@ -288,9 +315,12 @@ def _resolve(entry: AirscanConfigEntry, resolution: int | None, color_mode: str 
     return dpi, color
 
 
-def _finish(hass: HomeAssistant, entry: AirscanConfigEntry, result: dict) -> None:
+def _finish(hass: HomeAssistant, entry: AirscanConfigEntry, result: dict, seq: int | None = None) -> None:
     data = entry.runtime_data
     blank = result.get("blank_removed", 0)
+    if not _current(data, seq):   # a newer scan is already running: only report the event
+        hass.bus.async_fire(EVENT_SCAN_FINISHED, {"entry_id": entry.entry_id, **result})
+        return
     data.tracker.finished_at = dt_util.utcnow()
     data.tracker.last = summarize(result, data.tracker.finished_at)
     if result.get("queued"):
@@ -314,10 +344,11 @@ def _finish(hass: HomeAssistant, entry: AirscanConfigEntry, result: dict) -> Non
     hass.bus.async_fire(EVENT_SCAN_FINISHED, {"entry_id": entry.entry_id, **result})
 
 
-def _fail(hass: HomeAssistant, entry: AirscanConfigEntry, err: Exception) -> HomeAssistantError:
+def _fail(hass: HomeAssistant, entry: AirscanConfigEntry, err: Exception, seq: int | None = None) -> HomeAssistantError:
     data = entry.runtime_data
     msg = f"Scan fehlgeschlagen: {err}" if isinstance(err, EsclError) else str(err)
-    data.tracker.update("error", msg)
+    if _current(data, seq):
+        data.tracker.update("error", msg)
     _LOGGER.error(msg)
     hass.bus.async_fire(EVENT_SCAN_FAILED, {"entry_id": entry.entry_id, "detail": msg})
     return err if isinstance(err, HomeAssistantError) else HomeAssistantError(msg)
@@ -353,6 +384,7 @@ async def async_scan(
 
     _acquire(data)
     async with data.lock:
+        seq = _begin(data)
         data.tracker.set_notice("")
         data.tracker.update("running", "Scan startet", 0)
         try:
@@ -379,8 +411,8 @@ async def async_scan(
             result["source"] = "adf_duplex" if duplex else source
         except (EsclError, HomeAssistantError) as err:
             raise _fail(hass, entry, err) from err
-    _finish(hass, entry, result)
-    await data.coordinator.async_request_refresh()
+    # the scanner is free again; waiting for Paperless must not block the next scan
+    await _complete(hass, entry, result, seq)
     return result
 
 
@@ -442,6 +474,7 @@ async def async_batch_add(
 
     _acquire(data)
     async with data.lock:
+        _begin(data)
         data.tracker.cancel_timer()
         data.tracker.set_notice("")
         data.tracker.update("running", "Scan startet")
@@ -493,12 +526,14 @@ async def async_batch_send(
 
     _acquire(data)
     async with data.lock:
+        seq = _begin(data)
         data.tracker.cancel_timer()
         data.tracker.set_notice("")
         data.tracker.update("running", "Erzeuge PDF und speichere…")
+        sent = list(data.tracker.batch)
         try:
             result = await _deliver(
-                hass, entry, list(data.tracker.batch), data.tracker.batch_dpi,
+                hass, entry, sent, data.tracker.batch_dpi,
                 destination=destination, title=title, tags=tags,
                 correspondent=correspondent, document_type=document_type, directory=directory,
             )
@@ -508,7 +543,13 @@ async def async_batch_send(
             raise error from err
         data.tracker.batch.clear()
     result["source"] = "platen"
-    _finish(hass, entry, result)
+    try:
+        await _complete(hass, entry, result, seq)
+    except HomeAssistantError:
+        if not data.tracker.batch:   # Paperless refused it: keep the pages for another try
+            data.tracker.batch.extend(sent)
+            _arm_stale_timer(hass, entry)
+        raise
     return result
 
 
