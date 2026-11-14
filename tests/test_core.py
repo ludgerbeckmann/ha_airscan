@@ -634,6 +634,10 @@ def test_notification_texts():
     rejected = nm.scan_message("button_rejected", {"action": "adf"})
     assert rejected["title"] == "Taster ignoriert" and not rejected["actions"]
     assert nm.scan_message("button_rejected", {}, "en")["title"] == "Button ignored"
+    on, off = nm.scan_message("duplex_toggled", {"duplex": True}), nm.scan_message("duplex_toggled", {"duplex": False})
+    assert on["message"] == "Einzug scannt jetzt beidseitig" and off["message"] == "Einzug scannt jetzt einseitig"
+    assert on["silent"] and on["tag"] == off["tag"] and not on["time_sensitive"]
+    assert not nm.scan_message("scan_error", {"detail": "x"})["silent"]
     assert nm.action_labels("de") == ("Senden", "Verwerfen")
 
 
@@ -952,7 +956,11 @@ def test_button_triggers(monkeypatch):
         await press("open", advance=3.0)
         assert len(calls) == 1
         # ...and a press that is turned away because the scanner is busy is reported (a button has no screen)
-        assert fired == [("ha_airscan_button_rejected", {"entry_id": "E1", "action": "adf", "detail": "Es läuft bereits ein Scan"})]
+        assert [f for f in fired if f[0] == "ha_airscan_button_rejected"] == [
+            ("ha_airscan_button_rejected", {"entry_id": "E1", "action": "adf", "detail": "Es läuft bereits ein Scan"})]
+        # every long press confirms the new mode (two long presses so far: on, then off)
+        toggles = [f[1]["duplex"] for f in fired if f[0] == "ha_airscan_duplex_toggled"]
+        assert toggles == [True, False]
 
         # a scanner without duplex never asks for it, even if the switch state says so
         tracker.duplex_default = True

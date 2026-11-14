@@ -26,4 +26,5 @@ Trage nur einen der beiden Wege ein:
 
 - Beim MQTT-Thema zählt jede Nachricht als Tastendruck; eine leere Nachricht (Zurücksetzen) ist keiner.
 - Ein Neustart von Home Assistant oder des Brokers löst keinen Scan aus; derselbe Wert innerhalb einer Sekunde zählt nur einmal.
-- Läuft schon ein Scan, wird der Tastendruck ignoriert (steht im Log). Fehlgeschlagene Scans melden sich wie gewohnt über Status und [Benachrichtigungen](benachrichtigungen.md).
+- Läuft schon ein Scan, wird der Tastendruck ignoriert (die Meldung „Taster ignoriert“ sagt es dir, steht auch im Log).
+- **Rückmeldung beim Umschalten:** Der Taster selbst zeigt nichts an. Jede Umschaltung löst das Ereignis `ha_airscan_duplex_toggled` aus (`duplex`: `true`/`false`), mit dem du eine Ansage, eine Lampe oder Ähnliches steuern kannst. Dazu gibt es die leise Push-Meldung „Einzug umgestellt“ (in den Benachrichtigungen auswählbar). Fehlgeschlagene Scans melden sich wie gewohnt über Status und [Benachrichtigungen](benachrichtigungen.md).

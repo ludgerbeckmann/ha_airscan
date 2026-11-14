@@ -232,7 +232,8 @@
         "queue_delivered": "Warteschlange zugestellt",
         "batch_stale": "Stapel vergessen (mit Senden/Verwerfen-Knöpfen)",
         "printer_offline": "Drucker nicht erreichbar",
-        "button_rejected": "Taster ignoriert (Scan läuft noch)"
+        "button_rejected": "Taster ignoriert (Scan läuft noch)",
+        "duplex_toggled": "Einzug umgestellt (beidseitig/einseitig, leise)"
       }
     },
     "notify_paperless_types": {

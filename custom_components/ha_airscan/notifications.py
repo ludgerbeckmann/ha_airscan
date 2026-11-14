@@ -20,6 +20,7 @@ from .const import (
     DEFAULT_NOTIFY_SCAN_TYPES,
     EVENT_BATCH_STALE,
     EVENT_BUTTON_REJECTED,
+    EVENT_DUPLEX_TOGGLED,
     EVENT_PRINTER_OFFLINE,
     EVENT_QUEUE_DELIVERED,
     EVENT_SCAN_FAILED,
@@ -64,6 +65,7 @@ class Notifier:
             (EVENT_BATCH_STALE, lambda d: "batch_stale"),
             (EVENT_PRINTER_OFFLINE, lambda d: "printer_offline"),
             (EVENT_BUTTON_REJECTED, lambda d: "button_rejected"),
+            (EVENT_DUPLEX_TOGGLED, lambda d: "duplex_toggled"),
         ):
             self._entry.async_on_unload(bus.async_listen(event_type, self._make_handler(kind_of)))
         self._entry.async_on_unload(bus.async_listen("mobile_app_notification_action", self._on_action))
@@ -121,6 +123,9 @@ def _mobile_data(hass: HomeAssistant, entry_id: str, msg: dict) -> dict:
         extra["clickAction"] = msg["url"]    # Android
     if msg.get("time_sensitive"):
         extra["push"] = {"interruption-level": "time-sensitive"}
+    elif msg.get("silent"):   # a confirmation, not an alarm: no sound, no screen wake-up
+        extra["push"] = {"sound": "none", "interruption-level": "passive"}   # iOS
+        extra["importance"] = "low"                                         # Android
     if msg.get("actions"):
         send, discard = action_labels(hass.config.language)
         extra["actions"] = [
