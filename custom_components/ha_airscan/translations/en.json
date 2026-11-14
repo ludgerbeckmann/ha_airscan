@@ -231,7 +231,8 @@
         "queued": "Scan waiting for Paperless",
         "queue_delivered": "Queue delivered",
         "batch_stale": "Batch forgotten (with send/discard buttons)",
-        "printer_offline": "Printer not reachable"
+        "printer_offline": "Printer not reachable",
+        "button_rejected": "Button ignored (scan still running)"
       }
     },
     "notify_paperless_types": {

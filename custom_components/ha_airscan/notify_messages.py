@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-SCAN_TYPES = ["scan_done", "scan_error", "queued", "queue_delivered", "batch_stale", "printer_offline"]
+SCAN_TYPES = ["scan_done", "scan_error", "queued", "queue_delivered", "batch_stale", "printer_offline", "button_rejected"]
 PAPERLESS_TYPES = ["neu", "frist"]
 
 _TEXT = {
@@ -15,6 +15,7 @@ _TEXT = {
         "queue_delivered": ("Warteschlange zugestellt", "{title} ist jetzt in Paperless{doc}."),
         "batch_stale": ("Stapel vergessen", "{pages} warten auf dem Flachbett-Stapel: senden oder verwerfen?"),
         "printer_offline": ("Drucker nicht erreichbar", "{detail}"),
+        "button_rejected": ("Taster ignoriert", "Es läuft gerade noch ein Scan. Bitte kurz warten und erneut drücken."),
         "pages_one": "{n} Seite", "pages_many": "{n} Seiten", "doc": " (Dokument #{id})", "blank": ", {n} Leerseite(n) entfernt",
         "send": "Senden", "discard": "Verwerfen",
         "pl_new": "Paperless ngx: Neues Dokument", "pl_due": "Paperless ngx: Frist",
@@ -28,6 +29,7 @@ _TEXT = {
         "queue_delivered": ("Queue delivered", "{title} is now in Paperless{doc}."),
         "batch_stale": ("Batch forgotten", "{pages} waiting in the flatbed batch: send or discard?"),
         "printer_offline": ("Printer not reachable", "{detail}"),
+        "button_rejected": ("Button ignored", "A scan is still running. Please wait a moment and press again."),
         "pages_one": "{n} page", "pages_many": "{n} pages", "doc": " (document #{id})", "blank": ", {n} blank page(s) removed",
         "send": "Send", "discard": "Discard",
         "pl_new": "Paperless ngx: New document", "pl_due": "Paperless ngx: Due date",

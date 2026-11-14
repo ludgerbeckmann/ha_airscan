@@ -48,6 +48,7 @@ data:
 | `ha_airscan_batch_stale` | Ein Stapel wurde vergessen |
 | `ha_airscan_queue_delivered` | Ein wartender Scan wurde an Paperless zugestellt |
 | `ha_airscan_printer_offline` | Der Drucker antwortet nicht mehr |
+| `ha_airscan_button_rejected` | Ein Tasterdruck wurde abgewiesen, weil noch gescannt wird (`action`) |
 
 ## Beispiel: Automation bei Fehler
 

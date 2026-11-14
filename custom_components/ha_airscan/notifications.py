@@ -19,6 +19,7 @@ from .const import (
     DEFAULT_NOTIFY_PAPERLESS_TYPES,
     DEFAULT_NOTIFY_SCAN_TYPES,
     EVENT_BATCH_STALE,
+    EVENT_BUTTON_REJECTED,
     EVENT_PRINTER_OFFLINE,
     EVENT_QUEUE_DELIVERED,
     EVENT_SCAN_FAILED,
@@ -62,6 +63,7 @@ class Notifier:
             (EVENT_QUEUE_DELIVERED, lambda d: "queue_delivered"),
             (EVENT_BATCH_STALE, lambda d: "batch_stale"),
             (EVENT_PRINTER_OFFLINE, lambda d: "printer_offline"),
+            (EVENT_BUTTON_REJECTED, lambda d: "button_rejected"),
         ):
             self._entry.async_on_unload(bus.async_listen(event_type, self._make_handler(kind_of)))
         self._entry.async_on_unload(bus.async_listen("mobile_app_notification_action", self._on_action))

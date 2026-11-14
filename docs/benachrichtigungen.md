@@ -12,7 +12,9 @@ Nur die Home-Assistant-App bekommt die Zusatzfelder (Link, Priorität „zeitkri
 
 ## Scan-Meldungen
 
-Einzeln wählbar: Scan fertig, Scan fehlgeschlagen, Scan wartet auf Paperless, Warteschlange zugestellt, Stapel vergessen, Drucker nicht erreichbar. Vorbelegt sind Fehler, Warteschlange, vergessener Stapel und Drucker offline.
+Einzeln wählbar: Scan fertig, Scan fehlgeschlagen, Scan wartet auf Paperless, Warteschlange zugestellt, Stapel vergessen, Drucker nicht erreichbar, Taster ignoriert. Vorbelegt sind Fehler, Warteschlange, vergessener Stapel, Drucker offline und Taster ignoriert.
+
+„Taster ignoriert“ kommt, wenn ein externer Taster gedrückt wird, während noch gescannt wird. Der Scanner ist erst frei, wenn das Papier gescannt und zu Paperless hochgeladen ist; auf die Verarbeitung in Paperless (OCR) muss nicht gewartet werden.
 
 Die Meldung „Stapel vergessen“ hat in der Home-Assistant-App die Knöpfe **Senden** und **Verwerfen**, die direkt den Stapel verarbeiten.
 

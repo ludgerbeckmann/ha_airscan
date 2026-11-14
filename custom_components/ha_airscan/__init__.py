@@ -82,6 +82,7 @@ class AirscanData:
     lock: asyncio.Lock
     tracker: ScanTracker
     outbox: Outbox
+    scan_seq: int = 0   # counts scans, see scan._begin
 
 
 type AirscanConfigEntry = ConfigEntry[AirscanData]
