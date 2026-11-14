@@ -232,7 +232,8 @@
         "queue_delivered": "Queue delivered",
         "batch_stale": "Batch forgotten (with send/discard buttons)",
         "printer_offline": "Printer not reachable",
-        "button_rejected": "Button ignored (scan still running)"
+        "button_rejected": "Button ignored (scan still running)",
+        "duplex_toggled": "Feeder mode changed (two-/one-sided, silent)"
       }
     },
     "notify_paperless_types": {

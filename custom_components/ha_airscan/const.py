@@ -43,6 +43,7 @@ EVENT_QUEUE_DELIVERED = "ha_airscan_queue_delivered"
 EVENT_SCAN_FAILED = "ha_airscan_scan_failed"
 EVENT_PRINTER_OFFLINE = "ha_airscan_printer_offline"
 EVENT_BUTTON_REJECTED = "ha_airscan_button_rejected"
+EVENT_DUPLEX_TOGGLED = "ha_airscan_duplex_toggled"
 
 CONF_NOTIFY_SERVICES = "notify_services"
 CONF_NOTIFY_ENTITIES = "notify_entities"

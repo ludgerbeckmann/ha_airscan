@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-SCAN_TYPES = ["scan_done", "scan_error", "queued", "queue_delivered", "batch_stale", "printer_offline", "button_rejected"]
+SCAN_TYPES = ["scan_done", "scan_error", "queued", "queue_delivered", "batch_stale", "printer_offline", "button_rejected", "duplex_toggled"]
 PAPERLESS_TYPES = ["neu", "frist"]
 
 _TEXT = {
@@ -15,8 +15,10 @@ _TEXT = {
         "queue_delivered": ("Warteschlange zugestellt", "{title} ist jetzt in Paperless{doc}."),
         "batch_stale": ("Stapel vergessen", "{pages} warten auf dem Flachbett-Stapel: senden oder verwerfen?"),
         "printer_offline": ("Drucker nicht erreichbar", "{detail}"),
+        "duplex_toggled": ("Einzug umgestellt", "{mode}"),
         "button_rejected": ("Taster ignoriert", "Es läuft gerade noch ein Scan. Bitte kurz warten und erneut drücken."),
         "pages_one": "{n} Seite", "pages_many": "{n} Seiten", "doc": " (Dokument #{id})", "blank": ", {n} Leerseite(n) entfernt",
+        "mode_duplex": "Einzug scannt jetzt beidseitig", "mode_simplex": "Einzug scannt jetzt einseitig",
         "send": "Senden", "discard": "Verwerfen",
         "pl_new": "Paperless ngx: Neues Dokument", "pl_due": "Paperless ngx: Frist",
         "unknown": "unbekannt", "untitled": "ohne Titel", "file": "Datei",
@@ -29,8 +31,10 @@ _TEXT = {
         "queue_delivered": ("Queue delivered", "{title} is now in Paperless{doc}."),
         "batch_stale": ("Batch forgotten", "{pages} waiting in the flatbed batch: send or discard?"),
         "printer_offline": ("Printer not reachable", "{detail}"),
+        "duplex_toggled": ("Feeder mode changed", "{mode}"),
         "button_rejected": ("Button ignored", "A scan is still running. Please wait a moment and press again."),
         "pages_one": "{n} page", "pages_many": "{n} pages", "doc": " (document #{id})", "blank": ", {n} blank page(s) removed",
+        "mode_duplex": "Feeder now scans two-sided", "mode_simplex": "Feeder now scans one-sided",
         "send": "Send", "discard": "Discard",
         "pl_new": "Paperless ngx: New document", "pl_due": "Paperless ngx: Due date",
         "unknown": "unknown", "untitled": "untitled", "file": "file",
@@ -65,6 +69,7 @@ def scan_message(kind: str, data: dict, lang: str = "de") -> dict | None:
         "detail": str(data.get("detail") or ""),
         "title": data.get("title") or "",
         "reason": str(data.get("queue_error") or "")[:80],
+        "mode": t["mode_duplex" if data.get("duplex") else "mode_simplex"],
     }
     if kind == "printer_offline" and not values["detail"]:
         values["detail"] = t["offline_detail"]
@@ -74,6 +79,7 @@ def scan_message(kind: str, data: dict, lang: str = "de") -> dict | None:
         "tag": f"ha_airscan_{kind}",
         "url": "",
         "time_sensitive": kind in ("scan_error", "batch_stale"),
+        "silent": kind == "duplex_toggled",
         "actions": kind == "batch_stale",
     }
 

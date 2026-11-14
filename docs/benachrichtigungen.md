@@ -12,7 +12,9 @@ Nur die Home-Assistant-App bekommt die Zusatzfelder (Link, Priorität „zeitkri
 
 ## Scan-Meldungen
 
-Einzeln wählbar: Scan fertig, Scan fehlgeschlagen, Scan wartet auf Paperless, Warteschlange zugestellt, Stapel vergessen, Drucker nicht erreichbar, Taster ignoriert. Vorbelegt sind Fehler, Warteschlange, vergessener Stapel, Drucker offline und Taster ignoriert.
+Einzeln wählbar: Scan fertig, Scan fehlgeschlagen, Scan wartet auf Paperless, Warteschlange zugestellt, Stapel vergessen, Drucker nicht erreichbar, Taster ignoriert, Einzug umgestellt. Vorbelegt sind Fehler, Warteschlange, vergessener Stapel, Drucker offline und Taster ignoriert.
+
+„Einzug umgestellt“ (nicht vorbelegt) bestätigt, wenn der Taster zwischen beidseitig und einseitig umschaltet („Einzug scannt jetzt beidseitig“). Sie kommt leise (ohne Ton, ohne Bildschirm) und ersetzt die vorherige.
 
 „Taster ignoriert“ kommt, wenn ein externer Taster gedrückt wird, während noch gescannt wird. Der Scanner ist erst frei, wenn das Papier gescannt und zu Paperless hochgeladen ist; auf die Verarbeitung in Paperless (OCR) muss nicht gewartet werden.
 
