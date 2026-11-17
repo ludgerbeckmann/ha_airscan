@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import TYPE_CHECKING
 
@@ -19,6 +20,10 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
+# Two different scan buttons pressed within this time (either order) switch one-/two-sided instead of scanning.
+CHORD_WINDOW = 0.8
+CHORD_ACTIONS = ("adf", "platen")
+
 
 class ButtonTriggers:
     """Watches one button entity and runs the scan action mapped to the value it sends."""
@@ -27,6 +32,7 @@ class ButtonTriggers:
         self._hass = hass
         self._entry = entry
         self._debounce = Debounce()
+        self._pending: tuple[str, object] | None = None   # first press of a possible two-button chord
 
     @callback
     def async_start(self) -> None:
@@ -62,7 +68,23 @@ class ButtonTriggers:
         if action is None or not self._debounce.accept(value):
             return
         _LOGGER.debug("Button value %r -> %s", value, action)
+        mapping = self._entry.options.get(CONF_BUTTON_MAP) or {}
+        if action in CHORD_ACTIONS and all(mapping.get(a) for a in CHORD_ACTIONS):
+            if self._pending and self._pending[0] != action:   # the other scan button just before: a chord
+                self._pending = None
+                self._hass.async_create_task(self._run("toggle_duplex"))
+            else:   # hold it back briefly: it may be the first half of a chord
+                token = object()
+                self._pending = (action, token)
+                self._hass.async_create_task(self._after_window(action, token))
+            return
         self._hass.async_create_task(self._run(action))
+
+    async def _after_window(self, action: str, token: object) -> None:
+        await asyncio.sleep(CHORD_WINDOW)
+        if self._pending and self._pending[1] is token:   # nobody pressed the other button: it was a single press
+            self._pending = None
+            await self._run(action)
 
     async def _run(self, action: str) -> None:
         data = self._entry.runtime_data

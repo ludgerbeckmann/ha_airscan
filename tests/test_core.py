@@ -893,6 +893,7 @@ def test_button_triggers(monkeypatch):
     monkeypatch.setitem(sys.modules, "airscan_pkg.scan", _types.SimpleNamespace(
         ScannerBusy=Busy, async_scan=scan, async_batch_add=add, async_batch_send=send, async_batch_discard=discard))
     triggers = _load("triggers")
+    triggers.CHORD_WINDOW = 0         # the test patches time.monotonic, so no real waiting; the real window is 0.8 s
 
     class Tracker:
         duplex_default = False
@@ -961,6 +962,26 @@ def test_button_triggers(monkeypatch):
         # every long press confirms the new mode (two long presses so far: on, then off)
         toggles = [f[1]["duplex"] for f in fired if f[0] == "ha_airscan_duplex_toggled"]
         assert toggles == [True, False]
+
+        # open+close quickly after each other, in either order, switches one-/two-sided instead of scanning
+        tracker.duplex_default = False
+        fail["scan"] = False
+        calls.clear()
+        fired.clear()
+        clock[0] += 5                             # (the same value again within a second would count as a retransmission)
+        for pair in (("open", "close"), ("close", "open")):
+            for value in pair:
+                clock[0] += 0.2                   # 0.2 s apart: inside the window
+                new = SimpleNamespace(domain="event", state=f"t{clock[0]}", attributes={"event_type": value})
+                watched["action"](SimpleNamespace(data={"old_state": SimpleNamespace(state="2026-11-02T08:00:00"), "new_state": new}))
+            while hass.tasks:
+                await hass.tasks.pop(0)
+            clock[0] += 5
+        assert calls == []                        # nothing was scanned
+        assert [f[1]["duplex"] for f in fired if f[0] == "ha_airscan_duplex_toggled"] == [True, False]
+        assert tracker.duplex_default is False
+        await press("close", advance=5.0)         # a single press still works, just after the short window
+        assert calls == [("batch_add", {})]
 
         # a scanner without duplex never asks for it, even if the switch state says so
         tracker.duplex_default = True
