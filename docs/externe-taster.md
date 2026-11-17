@@ -11,6 +11,8 @@ Ein Taster oder eine Fernbedienung kann Scans starten, ohne Automation: *Konfigu
 | Beidseitig umschalten | stellt den Schalter „Einzug beidseitig (Taster)“ um (der Zustand bleibt auch nach einem Neustart erhalten) |
 | Stapel senden / verwerfen | wie die Buttons |
 
+**Umschalten ohne eigene Taste:** Sind „Einzug scannen“ und „Flachbett scannen“ belegt, schaltet **kurz nacheinander beide Tasten drücken** (z. B. `open` und `close`, die Reihenfolge ist egal, innerhalb von etwa 0,8 Sekunden) zwischen beidseitig und einseitig um. Dabei wird nicht gescannt. Der Preis dafür: Ein einzelner Druck auf eine dieser beiden Tasten startet den Scan erst nach diesen 0,8 Sekunden, weil abgewartet wird, ob noch die andere folgt. Die Bestätigung kommt wie beim Umschalten über eine eigene Taste (siehe „Rückmeldung beim Umschalten“).
+
 ## Quelle: MQTT-Thema oder Entität
 
 Trage nur einen der beiden Wege ein:

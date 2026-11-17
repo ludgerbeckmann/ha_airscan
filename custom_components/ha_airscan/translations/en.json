@@ -94,7 +94,7 @@
           },
           "buttons": {
             "name": "External buttons",
-            "description": "A button or remote can start scans. There are two ways, enter only one:\n\n• **MQTT topic** (recommended for Zigbee2MQTT, no change to Zigbee2MQTT needed): `zigbee2mqtt/DEVICE_NAME/action`, e.g. `zigbee2mqtt/Ikea Fernbedienung/action`.\n• **Entity** that reports the presses (ZHA, Matter, or Zigbee2MQTT with event entities enabled).\n\nLeave both empty and save to switch the feature off.\n\nKnown values: {known}\n\nEnter which value starts which action. Each value can be used once. For the IKEA remote these are `open` and `close` (case does not matter). In Zigbee2MQTT you can see what a long press sends under \"Exposes → Action\" while you press it.",
+            "description": "A button or remote can start scans. There are two ways, enter only one:\n\n• **MQTT topic** (recommended for Zigbee2MQTT, no change to Zigbee2MQTT needed): `zigbee2mqtt/DEVICE_NAME/action`, e.g. `zigbee2mqtt/Ikea Fernbedienung/action`.\n• **Entity** that reports the presses (ZHA, Matter, or Zigbee2MQTT with event entities enabled).\n\nLeave both empty and save to switch the feature off.\n\nKnown values: {known}\n\nEnter which value starts which action. Each value can be used once. For the IKEA remote these are `open` and `close` (case does not matter). In Zigbee2MQTT you can see what a long press sends under \"Exposes → Action\" while you press it.\n\nTip: if \"Scan feeder\" and \"Scan flatbed\" are both assigned, pressing both buttons quickly one after the other (either order) switches between two-sided and one-sided.",
             "data": {
               "button_entity": "Entity",
               "button_topic": "MQTT topic",
