@@ -1030,3 +1030,77 @@ def test_button_triggers(monkeypatch):
         assert watched == {}
 
     asyncio.run(go())
+
+
+def test_duplex_reset(monkeypatch):
+    """Two-sided goes back to one-sided after the configured idle time (and not before)."""
+    from types import SimpleNamespace
+
+    def mod(name, **attrs):
+        m = _types.ModuleType(name)
+        m.__dict__.update(attrs)
+        monkeypatch.setitem(sys.modules, name, m)
+
+    listeners, timers = [], []
+
+    def connect(hass, signal, cb):
+        listeners.append(cb)
+        return lambda: None
+
+    def call_later(hass, delay, cb):
+        timer = {"delay": delay, "cb": cb, "cancelled": False}
+        timers.append(timer)
+
+        def cancel():
+            timer["cancelled"] = True
+        return cancel
+
+    mod("homeassistant"); mod("homeassistant.helpers")
+    mod("homeassistant.core", CALLBACK_TYPE=object, HomeAssistant=object, callback=lambda f: f)
+    mod("homeassistant.helpers.dispatcher", async_dispatcher_connect=connect)
+    mod("homeassistant.helpers.event", async_call_later=call_later)
+    duplex_reset = _load("duplex_reset")
+
+    fired = []
+    tracker = SimpleNamespace(signal="s", duplex_default=False, status="idle", updates=0)
+    tracker.update = lambda *a, **k: setattr(tracker, "updates", tracker.updates + 1)
+    entry = SimpleNamespace(entry_id="E1", options={"duplex_reset_minutes": 10}, runtime_data=SimpleNamespace(tracker=tracker),
+                            async_on_unload=lambda fn: None)
+    hass = SimpleNamespace(bus=SimpleNamespace(async_fire=lambda e, d: fired.append((e, d))))
+
+    def live():
+        return [t for t in timers if not t["cancelled"]]
+
+    async def go():
+        duplex_reset.DuplexReset(hass, entry).async_start()
+        (notify,) = listeners
+        notify()
+        assert not live()                         # one-sided: nothing to reset
+        tracker.duplex_default = True
+        notify()
+        assert len(live()) == 1 and live()[0]["delay"] == 600
+        notify(); notify()                        # unrelated updates do not restart the time
+        assert len(live()) == 1
+        tracker.status = "running"
+        notify()                                  # a scan restarts it
+        assert len(live()) == 1 and len(timers) == 2
+        tracker.status = "done"
+        fired_timer = live()[0]
+        fired_timer["cancelled"] = True           # a timer that has fired is gone
+        await fired_timer["cb"](None)
+        assert tracker.duplex_default is False and tracker.updates == 1
+        assert fired == [("ha_airscan_duplex_toggled", {"entry_id": "E1", "duplex": False, "reason": "timeout"})]
+        # switched off by hand before the time is up: timer is dropped
+        tracker.duplex_default = True
+        notify()
+        assert len(live()) == 1
+        tracker.duplex_default = False
+        notify()
+        assert not live()
+        # option 0 = off
+        entry.options = {"duplex_reset_minutes": 0}
+        tracker.duplex_default = True
+        notify()
+        assert not live()
+
+    asyncio.run(go())

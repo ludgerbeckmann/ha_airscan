@@ -25,6 +25,7 @@ DEFAULT_RESOLUTION = 300
 DEFAULT_COLOR_MODE = "color"
 DEFAULT_PAGE_SIZE = "a4"
 DEFAULT_ADF_ALIGN = "auto"
+CONF_DUPLEX_RESET = "duplex_reset_minutes"
 DEFAULT_BATCH_TIMEOUT = 30  # minutes, 0 = off
 
 COLOR_MODES = ["color", "grayscale"]

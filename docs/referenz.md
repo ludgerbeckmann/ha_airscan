@@ -48,7 +48,7 @@ data:
 | `ha_airscan_batch_stale` | Ein Stapel wurde vergessen |
 | `ha_airscan_queue_delivered` | Ein wartender Scan wurde an Paperless zugestellt |
 | `ha_airscan_printer_offline` | Der Drucker antwortet nicht mehr |
-| `ha_airscan_duplex_toggled` | Der Taster hat zwischen beidseitig/einseitig umgeschaltet (`duplex`: `true`/`false`, der neue Zustand), z. B. für eine Ansage oder ein Blinken |
+| `ha_airscan_duplex_toggled` | Der Einzug wurde zwischen beidseitig/einseitig umgeschaltet, per Taster oder automatisch nach der eingestellten Zeit (`duplex`: `true`/`false`, der neue Zustand; `reason`: `timeout` beim automatischen Zurückschalten), z. B. für eine Ansage oder ein Blinken |
 | `ha_airscan_button_rejected` | Ein Tasterdruck wurde abgewiesen, weil noch gescannt wird (`action`) |
 
 ## Beispiel: Automation bei Fehler
