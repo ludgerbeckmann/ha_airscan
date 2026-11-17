@@ -32,7 +32,8 @@
           "blank_detection": "Detect and remove blank pages (feeder and flatbed)",
           "blank_threshold": "Blank page threshold (% ink, higher = more aggressive)",
           "page_size": "Paper size",
-          "adf_align": "Sheet position in the feeder"
+          "adf_align": "Sheet position in the feeder",
+          "duplex_reset_minutes": "Back to one-sided after (minutes without a scan, 0 = off)"
         }
       }
     },
@@ -74,7 +75,8 @@
               "blank_detection": "Detect and remove blank pages (feeder and flatbed)",
               "blank_threshold": "Blank page threshold (% ink, higher = more aggressive)",
               "page_size": "Paper size",
-              "adf_align": "Sheet position in the feeder"
+              "adf_align": "Sheet position in the feeder",
+              "duplex_reset_minutes": "Back to one-sided after (minutes without a scan, 0 = off)"
             }
           },
           "notifications": {

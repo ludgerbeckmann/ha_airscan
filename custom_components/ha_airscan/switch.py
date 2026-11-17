@@ -42,6 +42,8 @@ class DuplexSwitch(RestoreEntity, SwitchEntity):
         await super().async_added_to_hass()
         if (last := await self.async_get_last_state()) is not None:
             self._tracker.duplex_default = last.state == "on"
+            if self._tracker.duplex_default:
+                self._tracker.update()   # restored as two-sided: starts the reset timer, if set
         self.async_on_remove(
             async_dispatcher_connect(self.hass, self._tracker.signal, self.async_write_ha_state)
         )

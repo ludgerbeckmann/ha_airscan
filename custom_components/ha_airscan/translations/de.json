@@ -32,7 +32,8 @@
           "blank_detection": "Leerseiten erkennen und entfernen (Einzug und Flachbett)",
           "blank_threshold": "Leerseiten-Schwelle (% Tintenanteil, höher = aggressiver)",
           "page_size": "Papierformat",
-          "adf_align": "Papierlage im Einzug"
+          "adf_align": "Papierlage im Einzug",
+          "duplex_reset_minutes": "Zurück auf einseitig nach (Minuten ohne Scan, 0 = aus)"
         }
       }
     },
@@ -74,7 +75,8 @@
               "blank_detection": "Leerseiten erkennen und entfernen (Einzug und Flachbett)",
               "blank_threshold": "Leerseiten-Schwelle (% Tintenanteil, höher = aggressiver)",
               "page_size": "Papierformat",
-              "adf_align": "Papierlage im Einzug"
+              "adf_align": "Papierlage im Einzug",
+              "duplex_reset_minutes": "Zurück auf einseitig nach (Minuten ohne Scan, 0 = aus)"
             }
           },
           "notifications": {

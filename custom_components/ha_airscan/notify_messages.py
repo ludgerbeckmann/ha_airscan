@@ -18,7 +18,7 @@ _TEXT = {
         "duplex_toggled": ("Einzug umgestellt", "{mode}"),
         "button_rejected": ("Taster ignoriert", "Es läuft gerade noch ein Scan. Bitte kurz warten und erneut drücken."),
         "pages_one": "{n} Seite", "pages_many": "{n} Seiten", "doc": " (Dokument #{id})", "blank": ", {n} Leerseite(n) entfernt",
-        "mode_duplex": "Einzug scannt jetzt beidseitig", "mode_simplex": "Einzug scannt jetzt einseitig",
+        "mode_duplex": "Einzug scannt jetzt beidseitig", "mode_simplex": "Einzug scannt jetzt einseitig", "mode_timeout": " (Zeit abgelaufen)",
         "send": "Senden", "discard": "Verwerfen",
         "pl_new": "Paperless ngx: Neues Dokument", "pl_due": "Paperless ngx: Frist",
         "unknown": "unbekannt", "untitled": "ohne Titel", "file": "Datei",
@@ -34,7 +34,7 @@ _TEXT = {
         "duplex_toggled": ("Feeder mode changed", "{mode}"),
         "button_rejected": ("Button ignored", "A scan is still running. Please wait a moment and press again."),
         "pages_one": "{n} page", "pages_many": "{n} pages", "doc": " (document #{id})", "blank": ", {n} blank page(s) removed",
-        "mode_duplex": "Feeder now scans two-sided", "mode_simplex": "Feeder now scans one-sided",
+        "mode_duplex": "Feeder now scans two-sided", "mode_simplex": "Feeder now scans one-sided", "mode_timeout": " (time is up)",
         "send": "Send", "discard": "Discard",
         "pl_new": "Paperless ngx: New document", "pl_due": "Paperless ngx: Due date",
         "unknown": "unknown", "untitled": "untitled", "file": "file",
@@ -69,7 +69,8 @@ def scan_message(kind: str, data: dict, lang: str = "de") -> dict | None:
         "detail": str(data.get("detail") or ""),
         "title": data.get("title") or "",
         "reason": str(data.get("queue_error") or "")[:80],
-        "mode": t["mode_duplex" if data.get("duplex") else "mode_simplex"],
+        "mode": t["mode_duplex" if data.get("duplex") else "mode_simplex"]
+        + (t["mode_timeout"] if data.get("reason") == "timeout" else ""),
     }
     if kind == "printer_offline" and not values["detail"]:
         values["detail"] = t["offline_detail"]

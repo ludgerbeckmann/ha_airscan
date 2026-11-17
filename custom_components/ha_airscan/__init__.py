@@ -51,6 +51,7 @@ from .notifications import Notifier, async_send_test_to_entry
 from .paperless import PaperlessClient
 from .scan import async_batch_add, async_batch_discard, async_batch_send, async_scan
 from .state import ScanTracker
+from .duplex_reset import DuplexReset
 from .triggers import ButtonTriggers
 
 _LOGGER = logging.getLogger(__name__)
@@ -180,6 +181,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirscanConfigEntry) -> b
     notifier = Notifier(hass, entry)
     notifier.async_start()
     ButtonTriggers(hass, entry).async_start()
+    DuplexReset(hass, entry).async_start()
     if entry.options.get(CONF_PAPERLESS_WEBHOOK) and (webhook_id := entry.options.get(CONF_PAPERLESS_WEBHOOK_ID)):
         try:
             webhook.async_register(

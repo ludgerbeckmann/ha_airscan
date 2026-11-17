@@ -36,6 +36,7 @@ from .const import (
     DEFAULT_NOTIFY_SCAN_TYPES,
     PERSISTENT_NOTIFICATION,
     CONF_BATCH_TIMEOUT,
+    CONF_DUPLEX_RESET,
     CONF_BLANK_DETECTION,
     CONF_BLANK_THRESHOLD,
     CONF_COLOR_MODE,
@@ -98,6 +99,9 @@ def _options_schema(d: dict[str, Any]) -> vol.Schema:
             vol.Optional(
                 CONF_BATCH_AUTO_SEND, default=d.get(CONF_BATCH_AUTO_SEND, False)
             ): bool,
+            vol.Optional(
+                CONF_DUPLEX_RESET, default=d.get(CONF_DUPLEX_RESET, 0)
+            ): vol.All(vol.Coerce(int), vol.Range(min=0, max=1440)),
             vol.Optional(
                 CONF_BLANK_DETECTION, default=d.get(CONF_BLANK_DETECTION, False)
             ): bool,
