@@ -104,12 +104,16 @@
               "platen": "Flachbett scannen (in den Stapel)",
               "toggle_duplex": "Beidseitig umschalten",
               "batch_send": "Stapel senden",
-              "batch_discard": "Stapel verwerfen"
+              "batch_discard": "Stapel verwerfen",
+              "cancel": "Scan abbrechen",
+              "button_chord_seconds": "Zeitfenster für das Umschalten durch zwei Tasten (Sekunden)"
             },
             "data_description": {
               "button_topic": "Genau so, wie es in Zigbee2MQTT steht, mit dem Gerätenamen (keine Platzhalter # oder +).",
               "adf": "Beidseitig oder einseitig, je nach Schalter „Einzug beidseitig (Taster)“.",
-              "toggle_duplex": "Stellt den Schalter „Einzug beidseitig (Taster)“ um, z. B. auf einen langen Druck."
+              "toggle_duplex": "Stellt den Schalter „Einzug beidseitig (Taster)“ um, z. B. auf einen langen Druck.",
+              "cancel": "Bricht den laufenden Scan ab, z. B. wenn er versehentlich gestartet wurde.",
+              "button_chord_seconds": "So schnell müssen „Einzug scannen“ und „Flachbett scannen“ nacheinander gedrückt werden. Ein Einzeldruck startet den Scan erst nach dieser Zeit."
             }
           }
         }
@@ -149,6 +153,9 @@
       },
       "send_test": {
         "name": "Testnachricht senden"
+      },
+      "cancel_scan": {
+        "name": "Scan abbrechen"
       }
     },
     "sensor": {
@@ -387,6 +394,16 @@
     "send_test": {
       "name": "Testnachricht senden",
       "description": "Schickt eine Testnachricht an die eingetragenen Benachrichtigungsziele.",
+      "fields": {
+        "config_entry": {
+          "name": "Scanner",
+          "description": "Bei mehreren Scannern auswählen."
+        }
+      }
+    },
+    "cancel_scan": {
+      "name": "Scan abbrechen",
+      "description": "Bricht den laufenden Scan ab und löscht den Auftrag am Scanner.",
       "fields": {
         "config_entry": {
           "name": "Scanner",

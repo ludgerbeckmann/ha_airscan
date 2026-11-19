@@ -26,6 +26,8 @@ DEFAULT_COLOR_MODE = "color"
 DEFAULT_PAGE_SIZE = "a4"
 DEFAULT_ADF_ALIGN = "auto"
 CONF_DUPLEX_RESET = "duplex_reset_minutes"
+CONF_CHORD_WINDOW = "button_chord_seconds"
+DEFAULT_CHORD_WINDOW = 1.0  # seconds
 DEFAULT_BATCH_TIMEOUT = 30  # minutes, 0 = off
 
 COLOR_MODES = ["color", "grayscale"]
@@ -58,6 +60,7 @@ DEFAULT_NOTIFY_SCAN_TYPES = ["scan_error", "queued", "batch_stale", "printer_off
 DEFAULT_NOTIFY_PAPERLESS_TYPES = ["neu", "frist"]
 SERVICE_RETRY_QUEUE = "retry_queue"
 SERVICE_SEND_TEST = "send_test"
+SERVICE_CANCEL_SCAN = "cancel_scan"
 
 CONF_BUTTON_ENTITY = "button_entity"
 CONF_BUTTON_MAP = "button_map"

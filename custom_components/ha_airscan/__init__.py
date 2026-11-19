@@ -42,6 +42,7 @@ from .const import (
     SERVICE_BATCH_SEND,
     SERVICE_RETRY_QUEUE,
     SERVICE_SCAN,
+    SERVICE_CANCEL_SCAN,
     SERVICE_SEND_TEST,
     SOURCES,
 )
@@ -49,7 +50,7 @@ from .escl import Capabilities, EsclClient, EsclError, Status
 from .delivery import STARTUP_DELAY, Outbox, async_retry_queue
 from .notifications import Notifier, async_send_test_to_entry
 from .paperless import PaperlessClient
-from .scan import async_batch_add, async_batch_discard, async_batch_send, async_scan
+from .scan import async_cancel_scan, async_batch_add, async_batch_discard, async_batch_send, async_scan
 from .state import ScanTracker
 from .duplex_reset import DuplexReset
 from .triggers import ButtonTriggers
@@ -84,6 +85,8 @@ class AirscanData:
     tracker: ScanTracker
     outbox: Outbox
     scan_seq: int = 0   # counts scans, see scan._begin
+    scan_task: asyncio.Future | None = None   # the scanner part of the running scan, so it can be cancelled
+    cancel_requested: bool = False
 
 
 type AirscanConfigEntry = ConfigEntry[AirscanData]
@@ -226,6 +229,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirscanConfigEntry) -> b
         _register(SERVICE_BATCH_DISCARD, async_batch_discard, BATCH_DISCARD_SCHEMA)
         _register(SERVICE_RETRY_QUEUE, async_retry_queue, BATCH_DISCARD_SCHEMA, True)
         _register(SERVICE_SEND_TEST, async_send_test_to_entry, BATCH_DISCARD_SCHEMA)
+        _register(SERVICE_CANCEL_SCAN, async_cancel_scan, BATCH_DISCARD_SCHEMA)
     return True
 
 
@@ -242,6 +246,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: AirscanConfigEntry) -> 
         e.entry_id != entry.entry_id and e.state.value == "loaded"
         for e in hass.config_entries.async_entries(DOMAIN)
     ):
-        for service in (SERVICE_SCAN, SERVICE_BATCH_ADD, SERVICE_BATCH_SEND, SERVICE_BATCH_DISCARD, SERVICE_RETRY_QUEUE, SERVICE_SEND_TEST):
+        for service in (SERVICE_SCAN, SERVICE_BATCH_ADD, SERVICE_BATCH_SEND, SERVICE_BATCH_DISCARD, SERVICE_RETRY_QUEUE, SERVICE_SEND_TEST, SERVICE_CANCEL_SCAN):
             hass.services.async_remove(DOMAIN, service)
     return unloaded

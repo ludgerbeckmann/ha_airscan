@@ -21,7 +21,7 @@ Die Karte ändert ihre Größe nicht, egal in welchem Zustand sie ist.
 - **Statusbereich:** ein Bereich mit Zustandsmarke, Überschrift und Detailtext: Scan läuft, Stapel offen (mit Restzeit), Ergebnis mit Link zu Paperless, wartende Scans mit „Jetzt senden“, Fehler, Hinweis „Leere Seite erkannt“, Drucker nicht erreichbar.
 - **Scanart** in drei Segmenten: **Einzug einseitig**, **Einzug beidseitig** (nur wenn der Scanner Duplex kann) oder **Flachbett**.
 - **Optionen** (Auflösung, Farbe, Format, Leerseiten) für den **nächsten Scan** über das Zahnrad; sie werden im Browser gemerkt, die Integrationsoptionen bleiben unverändert.
-- **Knöpfe:** „Scannen“. Bei offenem Stapel stehen **+ Seite**, **Senden** und **Verwerfen** in einer Reihe, die Optionen sind abgeblendet.
+- **Knöpfe:** „Scannen“; während des Scannens steht dort **Abbrechen** (löscht den Auftrag am Scanner, auch beim Aufwärmen). Bei offenem Stapel stehen **+ Seite**, **Senden** und **Verwerfen** in einer Reihe, die Optionen sind abgeblendet.
 
 Farben und Schrift folgen dem Theme.
 

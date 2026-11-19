@@ -25,6 +25,8 @@ from .const import (
     CONF_BUTTON_ENTITY,
     CONF_BUTTON_MAP,
     CONF_BUTTON_TOPIC,
+    CONF_CHORD_WINDOW,
+    DEFAULT_CHORD_WINDOW,
     CONF_NOTIFY_ENTITIES,
     CONF_NOTIFY_PAPERLESS_TYPES,
     CONF_NOTIFY_SCAN_TYPES,
@@ -346,6 +348,13 @@ def _buttons_schema(d: dict[str, Any], known: list[str]) -> vol.Schema:
             CONF_BUTTON_TOPIC, description={"suggested_value": d.get(CONF_BUTTON_TOPIC)}
         ): str,
     }
+    fields[vol.Optional(CONF_CHORD_WINDOW, default=d.get(CONF_CHORD_WINDOW, DEFAULT_CHORD_WINDOW))] = (
+        selector.NumberSelector(
+            selector.NumberSelectorConfig(
+                min=0.3, max=3, step=0.1, mode=selector.NumberSelectorMode.BOX, unit_of_measurement="s"
+            )
+        )
+    )
     for action in BUTTON_ACTIONS:
         fields[vol.Optional(action, description={"suggested_value": shown.get(action, "")})] = (
             selector.SelectSelector(
@@ -383,6 +392,7 @@ def _flatten(user_input: dict[str, Any]) -> dict[str, Any]:
     flat[CONF_BUTTON_ENTITY] = buttons.get(CONF_BUTTON_ENTITY) or ""
     flat[CONF_BUTTON_TOPIC] = str(buttons.get(CONF_BUTTON_TOPIC) or "").strip()
     flat[CONF_BUTTON_MAP] = {a: str(buttons.get(a) or "").strip() for a in BUTTON_ACTIONS}
+    flat[CONF_CHORD_WINDOW] = float(buttons.get(CONF_CHORD_WINDOW) or DEFAULT_CHORD_WINDOW)
     return flat
 
 

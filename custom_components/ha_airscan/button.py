@@ -17,7 +17,7 @@ from . import AirscanConfigEntry
 from .const import DOMAIN
 from .delivery import async_retry_queue
 from .notifications import async_send_test_to_entry
-from .scan import async_batch_add, async_batch_discard, async_batch_send, async_scan
+from .scan import async_cancel_scan, async_batch_add, async_batch_discard, async_batch_send, async_scan
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -48,6 +48,10 @@ BUTTONS = (
     AirscanButtonDescription(
         key="batch_discard", translation_key="batch_discard", needs="platen",
         action=lambda h, e: async_batch_discard(h, e),
+    ),
+    AirscanButtonDescription(
+        key="cancel_scan", translation_key="cancel_scan", needs=None,
+        action=lambda h, e: async_cancel_scan(h, e),
     ),
     AirscanButtonDescription(
         key="send_test", translation_key="send_test", needs=None,

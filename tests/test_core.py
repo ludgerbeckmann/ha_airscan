@@ -890,8 +890,11 @@ def test_button_triggers(monkeypatch):
     async def discard(hass, entry, **kw):
         calls.append(("batch_discard", kw))
 
+    async def cancel(hass, entry, **kw):
+        calls.append(("cancel", kw))
+
     monkeypatch.setitem(sys.modules, "airscan_pkg.scan", _types.SimpleNamespace(
-        ScannerBusy=Busy, async_scan=scan, async_batch_add=add, async_batch_send=send, async_batch_discard=discard))
+        ScannerBusy=Busy, async_cancel_scan=cancel, async_scan=scan, async_batch_add=add, async_batch_send=send, async_batch_discard=discard))
     triggers = _load("triggers")
     triggers.CHORD_WINDOW = 0         # the test patches time.monotonic, so no real waiting; the real window is 0.8 s
 
@@ -962,6 +965,15 @@ def test_button_triggers(monkeypatch):
         # every long press confirms the new mode (two long presses so far: on, then off)
         toggles = [f[1]["duplex"] for f in fired if f[0] == "ha_airscan_duplex_toggled"]
         assert toggles == [True, False]
+
+        # a button mapped to "cancel" stops the running scan
+        entry.options["button_map"]["batch_discard"] = "stop2"
+        entry.options["button_map"]["cancel"] = "stop3"
+        calls.clear()
+        await press("stop3", advance=3.0)
+        assert calls == [("cancel", {})]
+        entry.options["button_map"].pop("cancel")
+        entry.options["button_map"]["batch_discard"] = ""
 
         # open+close quickly after each other, in either order, switches one-/two-sided instead of scanning
         tracker.duplex_default = False

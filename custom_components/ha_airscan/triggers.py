@@ -12,8 +12,8 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.event import async_track_state_change_event
 
 from .button_map import Debounce, action_for, topic_value, trigger_value
-from .const import CONF_BUTTON_ENTITY, CONF_BUTTON_MAP, CONF_BUTTON_TOPIC, EVENT_BUTTON_REJECTED, EVENT_DUPLEX_TOGGLED
-from .scan import ScannerBusy, async_batch_add, async_batch_discard, async_batch_send, async_scan
+from .const import CONF_BUTTON_ENTITY, CONF_BUTTON_MAP, CONF_BUTTON_TOPIC, CONF_CHORD_WINDOW, EVENT_BUTTON_REJECTED, EVENT_DUPLEX_TOGGLED
+from .scan import ScannerBusy, async_cancel_scan, async_batch_add, async_batch_discard, async_batch_send, async_scan
 
 if TYPE_CHECKING:
     from . import AirscanConfigEntry
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 # Two different scan buttons pressed within this time (either order) switch one-/two-sided instead of scanning.
-CHORD_WINDOW = 0.8
+CHORD_WINDOW = 1.0
 CHORD_ACTIONS = ("adf", "platen")
 
 
@@ -81,7 +81,7 @@ class ButtonTriggers:
         self._hass.async_create_task(self._run(action))
 
     async def _after_window(self, action: str, token: object) -> None:
-        await asyncio.sleep(CHORD_WINDOW)
+        await asyncio.sleep(float(self._entry.options.get(CONF_CHORD_WINDOW, CHORD_WINDOW)))
         if self._pending and self._pending[1] is token:   # nobody pressed the other button: it was a single press
             self._pending = None
             await self._run(action)
@@ -98,6 +98,8 @@ class ButtonTriggers:
                 await async_batch_send(self._hass, self._entry)
             elif action == "batch_discard":
                 await async_batch_discard(self._hass, self._entry)
+            elif action == "cancel":
+                await async_cancel_scan(self._hass, self._entry)
             elif action == "toggle_duplex":
                 data.tracker.duplex_default = not data.tracker.duplex_default
                 data.tracker.update()

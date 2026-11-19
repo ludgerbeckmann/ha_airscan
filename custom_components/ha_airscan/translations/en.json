@@ -104,12 +104,16 @@
               "platen": "Scan flatbed (into the batch)",
               "toggle_duplex": "Toggle two-sided",
               "batch_send": "Send batch",
-              "batch_discard": "Discard batch"
+              "batch_discard": "Discard batch",
+              "cancel": "Cancel scan",
+              "button_chord_seconds": "Time window for switching with two buttons (seconds)"
             },
             "data_description": {
               "button_topic": "Exactly as in Zigbee2MQTT, with the device name (no wildcards # or +).",
               "adf": "Two-sided or one-sided, depending on the \"Feeder two-sided (buttons)\" switch.",
-              "toggle_duplex": "Flips the \"Feeder two-sided (buttons)\" switch, e.g. on a long press."
+              "toggle_duplex": "Flips the \"Feeder two-sided (buttons)\" switch, e.g. on a long press.",
+              "cancel": "Cancels the running scan, e.g. when it was started by mistake.",
+              "button_chord_seconds": "How quickly \"Scan feeder\" and \"Scan flatbed\" have to be pressed one after the other. A single press starts the scan only after this time."
             }
           }
         }
@@ -149,6 +153,9 @@
       },
       "send_test": {
         "name": "Send test message"
+      },
+      "cancel_scan": {
+        "name": "Cancel scan"
       }
     },
     "sensor": {
@@ -387,6 +394,16 @@
     "send_test": {
       "name": "Send test message",
       "description": "Sends a test message to the configured notification targets.",
+      "fields": {
+        "config_entry": {
+          "name": "Scanner",
+          "description": "Select when you have several scanners."
+        }
+      }
+    },
+    "cancel_scan": {
+      "name": "Cancel scan",
+      "description": "Cancels the running scan and deletes the job on the scanner.",
       "fields": {
         "config_entry": {
           "name": "Scanner",
