@@ -41,6 +41,7 @@ from .escl import (
     EsclError,
     EsclNoPagesError,
     SourceCaps,
+    adf_state_key,
     build_scan_settings,
     scan_region,
 )
@@ -59,11 +60,9 @@ PAPERLESS_TASK_TIMEOUT = 120
 PAPERLESS_TASK_INTERVAL = 2
 TIMEOUT_ADF = 900
 TIMEOUT_PLATEN = 180
-WARMUP_ATTEMPTS = 2
 WARMUP_PAUSE = 2
 SCAN_ATTEMPTS = 3
 RETRY_PAUSE = 5
-ADF_LOADED = "ScannerAdfLoaded"
 # 10 x 10 mm in 1/300 inch
 WARMUP_SIZE = 118
 
@@ -103,6 +102,7 @@ class ScannerBusy(HomeAssistantError):
 
 def _acquire(data: AirscanData) -> None:
     if data.lock.locked():
+        _LOGGER.info("Scan request turned away: a scan is still running")
         raise ScannerBusy("Es läuft bereits ein Scan")
 
 
@@ -138,6 +138,7 @@ async def async_cancel_scan(hass: HomeAssistant, entry: AirscanConfigEntry, **_)
     task = data.scan_task
     if task is None or task.done():
         raise ServiceValidationError("Es läuft gerade kein Scan, der abgebrochen werden könnte")
+    _LOGGER.info("Cancelling the running scan")
     data.cancel_requested = True
     task.cancel()
 
@@ -153,17 +154,24 @@ def _current(data: AirscanData, seq: int | None) -> bool:
     return seq is None or (seq == data.scan_seq and not data.lock.locked())
 
 
+class AdfEmpty(HomeAssistantError):
+    """The feeder holds no paper."""
+
+
+async def _adf_is_empty(data: AirscanData) -> bool:
+    """True if the scanner reports an empty feeder (a failed status request does not count)."""
+    try:
+        return adf_state_key((await data.client.status()).adf_state) == "empty"
+    except EsclError:
+        return False
+
+
 async def _prepare_adf(data: AirscanData) -> None:
-    """Refresh a stale 'ADF empty' sensor with a tiny flatbed scan."""
-    if data.capabilities.platen is None:
+    """Make sure there is paper: an Epson keeps reporting 'empty' after standby, so one tiny
+    flatbed scan refreshes the status first. Still empty afterwards means really empty."""
+    if not await _adf_is_empty(data):
         return
-    for _ in range(WARMUP_ATTEMPTS):
-        try:
-            status = await data.client.status()
-            if status.adf_state == ADF_LOADED:
-                return
-        except EsclError:
-            pass
+    if data.capabilities.platen is not None:
         data.tracker.update(detail="Scanner wird aufgewärmt")
         warmup = build_scan_settings(
             source="platen",
@@ -178,6 +186,9 @@ async def _prepare_adf(data: AirscanData) -> None:
         except EsclError as err:
             _LOGGER.debug("Warm-up scan failed: %s", err)
         await asyncio.sleep(WARMUP_PAUSE)
+        if not await _adf_is_empty(data):
+            return
+    raise AdfEmpty("Einzug leer – bitte Papier einlegen")
 
 
 async def _run_scan(
@@ -358,6 +369,8 @@ def _resolve(entry: AirscanConfigEntry, resolution: int | None, color_mode: str 
 def _finish(hass: HomeAssistant, entry: AirscanConfigEntry, result: dict, seq: int | None = None) -> None:
     data = entry.runtime_data
     blank = result.get("blank_removed", 0)
+    _LOGGER.info("Scan finished: %s page(s) -> %s%s", result.get("pages"), result.get("destination"),
+                 " (queued, Paperless not reachable)" if result.get("queued") else "")
     if not _current(data, seq):   # a newer scan is already running: only report the event
         hass.bus.async_fire(EVENT_SCAN_FINISHED, {"entry_id": entry.entry_id, **result})
         return
@@ -425,6 +438,7 @@ async def async_scan(
     _acquire(data)
     async with data.lock:
         seq = _begin(data)
+        _LOGGER.info("Scan started: source=%s, duplex=%s, destination=%s", source, duplex, destination)
         data.tracker.set_notice("")
         data.tracker.update("running", "Scan startet", 0)
         try:
