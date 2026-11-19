@@ -93,6 +93,10 @@ def _source_caps(data: AirscanData, source: str, duplex: bool) -> SourceCaps:
     return src
 
 
+class ScanCancelled(HomeAssistantError):
+    """The user cancelled the running scan."""
+
+
 class ScannerBusy(HomeAssistantError):
     """A scan or batch action is still running (the scanner is in use)."""
 
@@ -100,6 +104,42 @@ class ScannerBusy(HomeAssistantError):
 def _acquire(data: AirscanData) -> None:
     if data.lock.locked():
         raise ScannerBusy("Es läuft bereits ein Scan")
+
+
+async def _cancellable(data: AirscanData, coro):
+    """Run the scanner part as its own task so that `async_cancel_scan` can stop it.
+
+    Cancelling it makes the eSCL client delete the job on the scanner (finally block).
+    """
+    task = asyncio.ensure_future(coro)
+    data.scan_task, data.cancel_requested = task, False
+    data.tracker.cancellable = True
+    try:
+        return await task
+    except asyncio.CancelledError:
+        outer = asyncio.current_task()
+        if data.cancel_requested and not (outer and outer.cancelling()):   # cancelled by the user, not by a shutdown
+            raise ScanCancelled("Scan abgebrochen") from None
+        raise
+    finally:
+        data.scan_task = None
+        data.tracker.cancellable = False
+
+
+def _cancelled(data: AirscanData) -> None:
+    """Status after a cancelled scan: back to idle (or to the open batch) with a hint."""
+    data.tracker.set_notice("cancelled", dt_util.utcnow())
+    _batch_idle(data, "Scan abgebrochen")
+
+
+async def async_cancel_scan(hass: HomeAssistant, entry: AirscanConfigEntry, **_) -> None:
+    """Stop the running scan (also deletes the job on the scanner)."""
+    data = entry.runtime_data
+    task = data.scan_task
+    if task is None or task.done():
+        raise ServiceValidationError("Es läuft gerade kein Scan, der abgebrochen werden könnte")
+    data.cancel_requested = True
+    task.cancel()
 
 
 def _begin(data: AirscanData) -> int:
@@ -388,12 +428,12 @@ async def async_scan(
         data.tracker.set_notice("")
         data.tracker.update("running", "Scan startet", 0)
         try:
-            pages = await _run_scan(
+            pages = await _cancellable(data, _run_scan(
                 data, source=source, duplex=duplex, resolution=dpi, color_mode=color,
                 src_caps=src_caps,
                 page_size=page_size or entry.options.get(CONF_PAGE_SIZE, DEFAULT_PAGE_SIZE),
                 adf_align=entry.options.get(CONF_ADF_ALIGN, DEFAULT_ADF_ALIGN),
-            )
+            ))
             removed = 0
             if _blank_enabled(entry, skip_blank):
                 data.tracker.update(detail="Prüfe auf Leerseiten…")
@@ -409,6 +449,9 @@ async def async_scan(
             )
             result["blank_removed"] = removed
             result["source"] = "adf_duplex" if duplex else source
+        except ScanCancelled:
+            _cancelled(data)
+            raise
         except (EsclError, HomeAssistantError) as err:
             raise _fail(hass, entry, err) from err
     # the scanner is free again; waiting for Paperless must not block the next scan
@@ -479,11 +522,15 @@ async def async_batch_add(
         data.tracker.set_notice("")
         data.tracker.update("running", "Scan startet")
         try:
-            pages = await _run_scan(
+            pages = await _cancellable(data, _run_scan(
                 data, source="platen", duplex=False, resolution=dpi, color_mode=color,
                 src_caps=src_caps,
                 page_size=page_size or entry.options.get(CONF_PAGE_SIZE, DEFAULT_PAGE_SIZE),
-            )
+            ))
+        except ScanCancelled:
+            _cancelled(data)
+            _arm_stale_timer(hass, entry)
+            raise
         except EsclError as err:
             error = _fail(hass, entry, err)
             _arm_stale_timer(hass, entry)

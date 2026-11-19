@@ -131,3 +131,10 @@ send_test:
       selector:
         config_entry:
           integration: ha_airscan
+
+cancel_scan:
+  fields:
+    config_entry:
+      selector:
+        config_entry:
+          integration: ha_airscan

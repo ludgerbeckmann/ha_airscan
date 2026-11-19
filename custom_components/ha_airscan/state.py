@@ -30,6 +30,7 @@ class ScanTracker:
         self.batch_expires_at: datetime | None = None
         self.notice = ""                    # e.g. "blank_skipped": something worth a hint, but no error
         self.notice_at: datetime | None = None
+        self.cancellable = False             # the scanner part of a scan is running and can be cancelled
         self.duplex_default = False          # feeder scans from external buttons: two-sided?
         self.printer_failures = 0           # consecutive failed status polls
         self.printer_state: str | None = None   # eSCL state: Idle, Processing, Stopped, ...

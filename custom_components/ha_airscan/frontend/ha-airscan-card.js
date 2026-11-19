@@ -15,7 +15,7 @@ const T = {
     platen: "Flachbett", adf: "Einzug", loaded: "Geladen", empty: "Leer", processing: "Arbeitet", jam: "Papierstau",
     cover_open: "Abdeckung offen", feeder_error: "Fehler",
     simplex: "einseitig", duplex_lc: "beidseitig", scan: "Scannen",
-    scanning: "Scannt …", retry: "Erneut versuchen", add_page: "+ Seite", send: "Senden", discard: "Verwerfen",
+    scanning: "Scannt …", cancel: "Abbrechen", notice_cancelled: "Scan abgebrochen", notice_cancelled_detail: "Der Auftrag wurde am Scanner gelöscht.", retry: "Erneut versuchen", add_page: "+ Seite", send: "Senden", discard: "Verwerfen",
     last_scan: "Letzter Scan", pages_n: (n) => `${n} ${n === 1 ? "Seite" : "Seiten"}`,
     pages_scanned: "Seiten gescannt", in_batch: (n) => `${n} ${n === 1 ? "Seite" : "Seiten"} im Stapel`,
     batch_hint: "Noch eine Seite? Auf das Flachbett legen.", auto_send: (m) => `Wird in ${m} min automatisch gesendet`,
@@ -38,7 +38,7 @@ const T = {
     platen: "Flatbed", adf: "Feeder", loaded: "Loaded", empty: "Empty", processing: "Busy", jam: "Jam",
     cover_open: "Cover open", feeder_error: "Error",
     simplex: "one-sided", duplex_lc: "two-sided", scan: "Scan",
-    scanning: "Scanning …", retry: "Try again", add_page: "+ Page", send: "Send", discard: "Discard",
+    scanning: "Scanning …", cancel: "Cancel", notice_cancelled: "Scan cancelled", notice_cancelled_detail: "The job was deleted on the scanner.", retry: "Try again", add_page: "+ Page", send: "Send", discard: "Discard",
     last_scan: "Last scan", pages_n: (n) => `${n} ${n === 1 ? "page" : "pages"}`,
     pages_scanned: "pages scanned", in_batch: (n) => `${n} ${n === 1 ? "page" : "pages"} in the batch`,
     batch_hint: "Another page? Put it on the flatbed.", auto_send: (m) => `Sent automatically in ${m} min`,
@@ -234,6 +234,7 @@ class HaAirscanCard extends HTMLElement {
     else if (act === "send") this._call("batch_send");
     else if (act === "discard") this._call("batch_discard");
     else if (act === "retry") this._call("retry_queue");
+    else if (act === "cancel") this._call("cancel_scan");
   }
 
   _onChange(e) {
@@ -304,6 +305,8 @@ class HaAirscanCard extends HTMLElement {
       info = { tone: "err", chip: "error", headline: t.printer_fault(a.printer_state), detail: t.printer_fault_hint };
     } else if (status === "error") {
       info = { tone: "err", chip: "error", headline: t.failed, detail: String(a.detail || "").replace(/^Scan fehlgeschlagen:\s*/i, "") };
+    } else if (a.notice === "cancelled" && a.notice_at && Date.now() - new Date(a.notice_at).getTime() < 300000) {
+      info = { tone: "warn", chip: "notice", headline: t.notice_cancelled, detail: [t.notice_cancelled_detail, batchPages > 0 ? t.in_batch(batchPages) : ""].filter(Boolean).join(" ") };
     } else if (a.notice === "blank_skipped" && a.notice_at && Date.now() - new Date(a.notice_at).getTime() < 600000) {
       info = { tone: "warn", chip: "notice", headline: t.notice_blank_skipped, detail: [t.notice_blank_detail, batchPages > 0 ? t.in_batch(batchPages) : ""].filter(Boolean).join(" ") };
     } else if (batchPages > 0) {
@@ -379,7 +382,8 @@ class HaAirscanCard extends HTMLElement {
 
     // ---- buttons: one row, always the same height --------------------------------------------------
     let actions;
-    if (running) actions = `<div class="actions"><button class="primary" disabled>${esc(t.scanning)}</button></div>`;
+    if (running && a.cancellable) actions = `<div class="actions"><button class="secondary danger" data-act="cancel">${esc(t.cancel)}</button></div>`;
+    else if (running) actions = `<div class="actions"><button class="primary" disabled>${esc(t.scanning)}</button></div>`;
     else if (locked) actions = `<div class="actions"><button class="secondary" data-act="add">${esc(t.add_page)}</button><button class="primary" data-act="send">${esc(t.send)}</button><button class="secondary danger" data-act="discard">${esc(t.discard)}</button></div>`;
     else actions = `<div class="actions"><button class="primary" data-act="scan" ${status === "unavailable" ? "disabled" : ""}>${esc(status === "error" ? t.retry : t.scan)}</button></div>`;
 

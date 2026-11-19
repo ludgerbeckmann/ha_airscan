@@ -7,7 +7,7 @@ import time
 from typing import Any
 
 # What a button can do. The value is what the user maps to it (e.g. "open" of an IKEA remote).
-BUTTON_ACTIONS = ["adf", "platen", "toggle_duplex", "batch_send", "batch_discard"]
+BUTTON_ACTIONS = ["adf", "platen", "toggle_duplex", "batch_send", "batch_discard", "cancel"]
 IGNORED_STATES = ("unknown", "unavailable", "")
 DEBOUNCE_SECONDS = 1.0
 

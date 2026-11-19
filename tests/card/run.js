@@ -55,6 +55,12 @@ const assert = require("assert");
     out.batch = b._hass.calls.slice();
     out.batchAdfDisabled = root(b).querySelector('[data-act="mode"][data-v="adf1"]').disabled && root(b).querySelector('[data-act="mode"][data-v="adf2"]').disabled;
 
+    const cx = mount({ status: "running", attrs: { cancellable: true, detail: "Scanner wird aufgewärmt" } }, document.body);
+    out.cancelLabel = root(cx).querySelector('[data-act="cancel"]').textContent;
+    click(cx, '[data-act="cancel"]'); out.cancelCall = cx._hass.calls.slice();
+    const cn = mount({ status: "idle", attrs: { notice: "cancelled", notice_at: iso(-30000) } }, document.body);
+    out.cancelNotice = root(cn).querySelector(".headline, .status")?.textContent || root(cn).textContent;
+
     const r = mount({ status: "running" }, document.body);
     out.runningDisabled = root(r).querySelector(".primary").disabled;
 
@@ -176,6 +182,9 @@ const assert = require("assert");
   assert.deepStrictEqual(result.adfOverrides[2], ["ha_airscan", "scan", { source: "adf", duplex: true, resolution: 600, skip_blank: false }]);
   assert.ok(result.pills.includes("600 dpi"), JSON.stringify(result.pills));
   assert.deepStrictEqual(result.batch.map((x) => x[1]), ["batch_add", "batch_send", "batch_discard"]);
+  assert.strictEqual(result.cancelLabel, "Abbrechen");
+  assert.deepStrictEqual(result.cancelCall, [["ha_airscan", "cancel_scan", {}]]);
+  assert.ok(/Scan abgebrochen/.test(result.cancelNotice), result.cancelNotice);
   assert.strictEqual(result.batchAdfDisabled, true);
   assert.strictEqual(result.runningDisabled, true);
   assert.strictEqual(result.link, "http://paperless.local:8000/documents/123/details");

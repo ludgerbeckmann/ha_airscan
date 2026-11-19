@@ -25,6 +25,7 @@ Attribute des Status-Sensors: `detail` (Klartext), `pages`, `batch_pages`, `batc
 | `ha_airscan.batch_send` | Stapel als ein PDF senden |
 | `ha_airscan.batch_discard` | Stapel verwerfen |
 | `ha_airscan.retry_queue` | Wartende Scans sofort an Paperless senden |
+| `ha_airscan.cancel_scan` | Den laufenden Scan abbrechen (löscht den Auftrag am Scanner); die Schaltfläche „Scan abbrechen“ und der **Abbrechen**-Knopf der Karte tun dasselbe |
 | `ha_airscan.send_test` | Testnachricht an die Benachrichtigungsziele |
 
 Bei mehreren Scannern zusätzlich `config_entry`. Beispiel:
