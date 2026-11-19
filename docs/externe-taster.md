@@ -25,6 +25,19 @@ Trage nur einen der beiden Wege ein:
 
 Über Zigbee2MQTT: Thema `zigbee2mqtt/<Gerätename>/action` eintragen (der Gerätename steht in Zigbee2MQTT). Das Gerät meldet laut Zigbee2MQTT die Werte `open`, `close` und `stop`. Sinnvolle Belegung: `open` → *Einzug scannen*, `close` → *Flachbett scannen*. Welche Bedienung `stop` (oder einen anderen Wert) sendet, etwa ein langer Druck, siehst du in Zigbee2MQTT unter *Expose-Funktionen → Action*, während du die Taste drückst. Diesen Wert kannst du auf *Beidseitig umschalten* legen.
 
+## Fehlersuche (Protokoll)
+
+Wenn ein Tastendruck nicht das tut, was du erwartest: *Einstellungen → Geräte & Dienste → Scan to Paperless → ⋮ → Debug-Protokollierung aktivieren*, die Tasten drücken, dann *Debug-Protokollierung deaktivieren* (die Protokolldatei wird zum Download angeboten). Darin stehen für jeden Druck:
+
+- `Button MQTT message …` bzw. `Button entity …`: was der Taster wirklich gesendet hat. Fehlt eine Zeile, kam der Druck gar nicht in Home Assistant an (Funk, Zigbee2MQTT, Thema).
+- `… is not assigned to an action`: der Wert ist keiner Aktion zugeordnet.
+- `… ignored: the same value arrived less than a second ago`: derselbe Wert kam zweimal innerhalb einer Sekunde (Funk-Wiederholung) und zählt nur einmal. Zwei schnelle Drücke derselben Taste werden also nicht als zwei Drücke gewertet.
+- `waiting … in case the other scan button follows`: der Druck wartet auf die zweite Taste (siehe oben).
+- `Buttons … pressed together: switching one-/two-sided`: das Umschalten wurde erkannt.
+- `Button action … started`, `Scan started`, `Scan finished`, `Scan request turned away: a scan is still running`: was daraus wurde.
+
+Die Beschäftigung mit Paperless (Hochladen, Warten auf die Verarbeitung) verhindert das Erkennen der Tastendrücke nicht, die Erkennung läuft unabhängig davon. Nur ein Scan selbst, solange der Scanner arbeitet, weist weitere Scan-Tasten ab.
+
 ## Verhalten
 
 - Beim MQTT-Thema zählt jede Nachricht als Tastendruck; eine leere Nachricht (Zurücksetzen) ist keiner.

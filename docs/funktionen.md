@@ -7,8 +7,8 @@ Zurück zur [Übersicht](../README.md).
 - **Quellen:** Flachbett, Dokumenteneinzug (ADF) einseitig und beidseitig (Duplex). Duplex wird per `<scan:Duplex>` angefordert und nur angeboten, wenn der Scanner `AdfDuplexInputCaps` meldet.
 - **Mehrseitige Scans** aus dem Einzug werden zu **einem** PDF zusammengefasst. Die JPEG-Bilder des Scanners werden ohne Neukodierung eingebettet, also ohne Qualitätsverlust.
 - **Einrichtung:** Zeroconf-Erkennung (`_uscan._tcp` / `_uscans._tcp`) oder manuell; HTTPS mit selbstsigniertem Zertifikat wird akzeptiert. Bei neuer IP aktualisiert die Erkennung die Einrichtung; trotzdem hilft eine DHCP-Reservierung für den Drucker.
-- **Immer nur ein Scan gleichzeitig.** Der eSCL-Auftrag wird danach sauber gelöscht. Timeouts: Einzug 900 s, Flachbett 180 s; die Seitenzahl wird live aktualisiert.
-- **Aufwärmlogik für den Einzug:** Meldet der Drucker nach dem Standby fälschlich `ScannerAdfEmpty`, wird bis zu 2× ein winziger Flachbett-Scan (100 dpi, 10×10 mm) gemacht, um den Sensor zu aktualisieren. Liefert ein Scan 0 Seiten, gibt es bis zu 3 Versuche mit Pause.
+- **Immer nur ein Scan gleichzeitig.** Der eSCL-Auftrag wird danach sauber gelöscht; ein laufender Scan lässt sich abbrechen (Karte, Dienst `cancel_scan`, Schaltfläche, Taster). Timeouts: Einzug 900 s, Flachbett 180 s; die Seitenzahl wird live aktualisiert.
+- **Aufwärmlogik für den Einzug:** Meldet der Drucker `ScannerAdfEmpty` (auch fälschlich nach dem Standby), wird **einmal** ein winziger Flachbett-Scan (100 dpi, 10×10 mm) gemacht, um den Sensor zu aktualisieren. Steht er danach immer noch auf leer, ist wirklich kein Papier eingelegt: Der Scan wird nicht gestartet und meldet „Einzug leer – bitte Papier einlegen“. Meldet der Scanner gar keinen Einzugsstatus, wird einfach gescannt.
 - **Dateiname** `scan-JJJJMMTT-HHMMSS.pdf`.
 
 ## Papierformat und Papierlage

@@ -54,6 +54,7 @@ class ButtonTriggers:
 
     @callback
     def _on_message(self, msg) -> None:
+        _LOGGER.debug("Button MQTT message on %s: %r", getattr(msg, "topic", "?"), msg.payload)
         self._press(topic_value(msg.payload))
 
     @callback
@@ -61,29 +62,40 @@ class ButtonTriggers:
         new, old = event.data.get("new_state"), event.data.get("old_state")
         if new is None:
             return
+        _LOGGER.debug("Button entity %s: %r -> %r %s", event.data.get("entity_id"), old.state if old else None, new.state, dict(new.attributes))
         self._press(trigger_value(new.domain, old.state if old else None, new.state, dict(new.attributes)))
 
     def _press(self, value: str | None) -> None:
         action = action_for(value, self._entry.options.get(CONF_BUTTON_MAP) or {})
-        if action is None or not self._debounce.accept(value):
+        if action is None:
+            if value:
+                _LOGGER.debug("Button value %r is not assigned to an action", value)
+            return
+        if not self._debounce.accept(value):
+            _LOGGER.debug("Button value %r ignored: the same value arrived less than a second ago (radio retransmission)", value)
             return
         _LOGGER.debug("Button value %r -> %s", value, action)
         mapping = self._entry.options.get(CONF_BUTTON_MAP) or {}
         if action in CHORD_ACTIONS and all(mapping.get(a) for a in CHORD_ACTIONS):
             if self._pending and self._pending[0] != action:   # the other scan button just before: a chord
+                _LOGGER.info("Buttons %r and %r pressed together: switching one-/two-sided", self._pending[0], action)
                 self._pending = None
                 self._hass.async_create_task(self._run("toggle_duplex"))
             else:   # hold it back briefly: it may be the first half of a chord
                 token = object()
+                _LOGGER.debug("Button action %s: waiting %.1f s in case the other scan button follows", action,
+                              float(self._entry.options.get(CONF_CHORD_WINDOW, CHORD_WINDOW)))
                 self._pending = (action, token)
                 self._hass.async_create_task(self._after_window(action, token))
             return
+        _LOGGER.info("Button action %s started", action)
         self._hass.async_create_task(self._run(action))
 
     async def _after_window(self, action: str, token: object) -> None:
         await asyncio.sleep(float(self._entry.options.get(CONF_CHORD_WINDOW, CHORD_WINDOW)))
         if self._pending and self._pending[1] is token:   # nobody pressed the other button: it was a single press
             self._pending = None
+            _LOGGER.info("Button action %s started", action)
             await self._run(action)
 
     async def _run(self, action: str) -> None:
