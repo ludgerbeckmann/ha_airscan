@@ -9,8 +9,12 @@ from PIL import Image
 _COLORSPACES = {"L": "DeviceGray", "RGB": "DeviceRGB", "CMYK": "DeviceCMYK"}
 
 
-def jpegs_to_pdf(pages: list[bytes], dpi: int) -> bytes:
-    """Build a multi-page PDF from JPEG images without re-encoding them."""
+def jpegs_to_pdf(pages: list[bytes], dpi: int, crops: list[tuple[int, int] | None] | None = None) -> bytes:
+    """Build a multi-page PDF from JPEG images without re-encoding them.
+
+    `crops` optionally gives per page the columns (x0, x1) in pixels that stay visible: the page
+    is narrowed by moving the image inside the page box, the image data itself is untouched.
+    """
     out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
     offsets: list[int] = []
 
@@ -27,13 +31,15 @@ def jpegs_to_pdf(pages: list[bytes], dpi: int) -> bytes:
             width, height = img.size
             colorspace = _COLORSPACES[img.mode]
         w_pt, h_pt = width * 72 / dpi, height * 72 / dpi
+        crop = crops[i] if crops and i < len(crops) else None
+        x0_pt, box_w = (crop[0] * 72 / dpi, (crop[1] - crop[0]) * 72 / dpi) if crop else (0.0, w_pt)
         page_no = 3 + 3 * i
         add(
-            f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {w_pt:.2f} {h_pt:.2f}] "
+            f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {box_w:.2f} {h_pt:.2f}] "
             f"/Resources << /XObject << /Im0 {page_no + 2} 0 R >> >> "
             f"/Contents {page_no + 1} 0 R >>".encode()
         )
-        content = f"q {w_pt:.2f} 0 0 {h_pt:.2f} 0 0 cm /Im0 Do Q".encode()
+        content = f"q {w_pt:.2f} 0 0 {h_pt:.2f} {-x0_pt:.2f} 0 cm /Im0 Do Q".encode()
         add(f"<< /Length {len(content)} >>\nstream\n".encode() + content + b"\nendstream")
         add(
             (

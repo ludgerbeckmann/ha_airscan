@@ -1116,3 +1116,46 @@ def test_duplex_reset(monkeypatch):
         assert not live()
 
     asyncio.run(go())
+
+
+def test_paper_edge_and_cropped_pdf():
+    """The empty strip beside the sheet is found from the edge shadow line, and only then."""
+    import random
+    import re
+    from PIL import ImageDraw
+
+    edge = _load("edge")
+    rnd = random.Random(1)
+
+    def page(line_x=None, width=2550, height=3510, bar=None, text=True):
+        img = Image.new("RGB", (width, height), (250, 250, 250))
+        d = ImageDraw.Draw(img)
+        if text:                                              # lines of text in the body
+            for y in range(300, height - 300, 70):
+                d.rectangle((300, y, width - 400 - rnd.randint(0, 600), y + 22), fill=(40, 40, 40))
+        if line_x is not None:                                # edge shadow: 6 px darker line, over the full height
+            d.rectangle((line_x, 0, line_x + 5, height), fill=(236, 236, 236))
+        if bar:                                               # a printed vertical bar that does not span the page
+            d.rectangle((bar, 400, bar + 5, 1500), fill=(120, 120, 120))
+        buf = BytesIO()
+        img.save(buf, "JPEG", quality=85)
+        return buf.getvalue()
+
+    paper = 2480
+    x0, x1 = edge.find_paper(page(line_x=58), 300, paper)            # sheet on the right, strip on the left
+    assert 55 <= x0 <= 75 and x1 == 2550, (x0, x1)
+    x0, x1 = edge.find_paper(page(line_x=2550 - 62), 300, paper)     # sheet on the left (the back of a duplex page)
+    assert x0 == 0 and 2470 <= x1 <= 2492, (x0, x1)
+    assert edge.find_paper(page(), 300, paper) is None               # no line: stays as scanned
+    assert edge.find_paper(page(bar=60), 300, paper) is None         # a short bar is no edge
+    assert edge.find_paper(page(line_x=300), 300, paper) is None     # too far inside to be an edge
+    assert edge.find_paper(page(line_x=58, width=2480), 300, paper) is None   # not wider than the paper: nothing to cut
+    assert edge.find_paper(page(line_x=58), 300, 0) is None          # "max" paper size: never cut
+    assert edge.find_paper(b"not a jpeg", 300, paper) is None
+
+    # the PDF page gets the width of the sheet, the image data stays byte for byte the same
+    jpeg = page(line_x=58)
+    out = pdf.jpegs_to_pdf([jpeg, jpeg], 300, [(62, 2550), None])
+    boxes = re.findall(rb"/MediaBox \[0 0 ([\d.]+) ([\d.]+)\]", out)
+    assert float(boxes[0][0]) == round((2550 - 62) * 72 / 300, 2) and float(boxes[1][0]) == 612.0
+    assert b"-14.88 0 cm" in out and out.count(jpeg) == 2

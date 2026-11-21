@@ -38,6 +38,7 @@ from .blank import DEFAULT_INK_PERCENT, filter_blank
 from .escl import (
     COLOR_MODE_MAP,
     MAX_BATCH_BYTES,
+    PAGE_SIZES,
     EsclError,
     EsclNoPagesError,
     SourceCaps,
@@ -48,6 +49,7 @@ from .escl import (
 from .files import FileOutputError, write_atomic
 from .outbox_store import next_delay
 from .paperless import PaperlessError, PaperlessTaskFailed
+from .edge import find_paper
 from .pdf import jpegs_to_pdf
 from .summary import summarize
 
@@ -253,11 +255,22 @@ async def _deliver(
     correspondent: str | None,
     document_type: str | None,
     directory: str | None,
+    page_size: str | None = None,
 ) -> dict:
     """Build the PDF and store it."""
     data = entry.runtime_data
     opts = entry.options
-    pdf = await hass.async_add_executor_job(jpegs_to_pdf, pages, dpi)
+    size = PAGE_SIZES.get(page_size or opts.get(CONF_PAGE_SIZE, DEFAULT_PAGE_SIZE))
+    paper_w = round(size[0] * dpi / 300) if size else 0
+
+    def _build() -> bytes:
+        # a feeder scans wider than the paper: cut the empty strip beside the sheet (page by page)
+        crops = [find_paper(p, dpi, paper_w) for p in pages] if paper_w else None
+        if crops and any(crops):
+            _LOGGER.info("Paper edge found, empty strip cut off: %s", [c if c else "-" for c in crops])
+        return jpegs_to_pdf(pages, dpi, crops)
+
+    pdf = await hass.async_add_executor_job(_build)
     now = dt_util.now()
     title = title or f"Scan {now:%Y-%m-%d %H:%M}"
     filename = f"scan-{now:%Y%m%d-%H%M%S}.pdf"
@@ -460,6 +473,7 @@ async def async_scan(
             result = await _deliver(
                 hass, entry, pages, dpi, destination=destination, title=title, tags=tags,
                 correspondent=correspondent, document_type=document_type, directory=directory,
+                page_size=page_size,
             )
             result["blank_removed"] = removed
             result["source"] = "adf_duplex" if duplex else source

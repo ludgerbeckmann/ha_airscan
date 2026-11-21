@@ -15,6 +15,7 @@ Zurück zur [Übersicht](../README.md).
 
 - **Papierformat** (Option, Standard A4; A5, Letter, Legal oder volle Scanfläche): Der Scanbereich wird auf das Format begrenzt. Ohne das scannt ein Legal-Einzug (z. B. bei manchen Epson-Geräten) A4-Blätter mit einem weißen Streifen unten.
 - **Papierlage im Einzug** (Option: automatisch, links, Mitte, rechts): Liegt das Papier im Einzug an einer Seite an (beim Epson ET-3950 rechts), schneidet die Integration auch die Breite zu und lässt 15 Pixel Spielraum. Bei „automatisch“ wird die Ausrichtung des Scanners verwendet; meldet er keine, bleibt die volle Breite erhalten.
+- **Randerkennung (bei „automatisch“):** Der Einzug scannt breiter als A4 (beim Epson 2550 statt 2480 Pixel, also etwa 6 mm). Das Papier liegt dabei an einer Seite, bei Duplex vorn und hinten an verschiedenen. Neben dem Blatt bleibt ein leerer Streifen, der im PDF sonst als Rand sichtbar wäre. Die Integration sucht deshalb für jede Seite die Papierkante und blendet den Streifen aus. Erkannt wird die dünne, senkrechte Schattenlinie der Papierkante, die sich über die ganze Seitenhöhe zieht. Das PDF-Seitenformat wird dabei auf A4 gesetzt; die Bilddaten bleiben unverändert (verlustfrei, nur der sichtbare Ausschnitt ändert sich). Wird keine eindeutige Kante gefunden, bleibt die Seite wie gescannt. Im Protokoll steht bei Erfolg `Paper edge found, empty strip cut off` mit den Schnittgrenzen je Seite. Mit fest eingestellter Papierlage (links, Mitte, rechts) wird schon beim Scannen zugeschnitten, dann ist keine Erkennung nötig.
 
 ## Flachbett: Stapel
 
