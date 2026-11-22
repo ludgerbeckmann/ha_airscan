@@ -20,7 +20,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import ConfigEntryNotReady, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.loader import async_get_integration
 
 from .const import (
@@ -46,7 +46,7 @@ from .const import (
     SERVICE_SEND_TEST,
     SOURCES,
 )
-from .escl import Capabilities, EsclClient, EsclError, Status
+from .escl import STATE_UNREACHABLE, Capabilities, EsclClient, EsclError, Status
 from .delivery import STARTUP_DELAY, Outbox, async_retry_queue
 from .notifications import Notifier, async_send_test_to_entry
 from .paperless import PaperlessClient
@@ -142,11 +142,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirscanConfigEntry) -> b
         try:
             status = await client.status()
         except EsclError as err:
+            # A printer in standby does not answer: that is normal, not an error. So no UpdateFailed
+            # (Home Assistant would log an ERROR line each time); the sensor goes unavailable itself.
             tracker.printer_failures += 1
+            _LOGGER.debug("Scanner status request failed: %s", err)
             if tracker.printer_online != was_online:
+                _LOGGER.info("Scanner not reachable (switched off or in standby?): %s", err)
                 tracker.update()            # the card shows "printer offline"
                 hass.bus.async_fire(EVENT_PRINTER_OFFLINE, {"entry_id": entry.entry_id, "detail": ""})
-            raise UpdateFailed(str(err)) from err
+            return Status(state=STATE_UNREACHABLE)
+        if not was_online:
+            _LOGGER.info("Scanner reachable again")
         tracker.printer_failures = 0
         tracker.printer_state = status.state
         if not was_online or status.state != was_state:

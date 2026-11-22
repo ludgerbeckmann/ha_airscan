@@ -29,7 +29,7 @@ from .const import (
     DEFAULT_RESOLUTION,
     DOMAIN,
 )
-from .escl import ADF_STATE_OPTIONS, adf_state_key
+from .escl import ADF_STATE_OPTIONS, STATE_UNREACHABLE, adf_state_key
 from .state import STATUSES
 
 
@@ -198,6 +198,11 @@ class FeederSensor(CoordinatorEntity, SensorEntity):
         super().__init__(entry.runtime_data.coordinator)
         self._attr_unique_id = f"{entry.unique_id}_feeder"
         self._attr_device_info = _device(entry)
+
+    @property
+    def available(self) -> bool:
+        """Not while the printer does not answer (standby, switched off)."""
+        return super().available and self.coordinator.data.state != STATE_UNREACHABLE
 
     @property
     def native_value(self) -> str | None:

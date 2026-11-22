@@ -60,6 +60,9 @@ class Capabilities:
     adf_duplex: SourceCaps | None = None
 
 
+STATE_UNREACHABLE = "Unreachable"   # not an eSCL state: the status request itself failed (e.g. standby)
+
+
 @dataclass
 class Status:
     """Scanner status."""

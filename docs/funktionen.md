@@ -9,6 +9,7 @@ Zurück zur [Übersicht](../README.md).
 - **Einrichtung:** Zeroconf-Erkennung (`_uscan._tcp` / `_uscans._tcp`) oder manuell; HTTPS mit selbstsigniertem Zertifikat wird akzeptiert. Bei neuer IP aktualisiert die Erkennung die Einrichtung; trotzdem hilft eine DHCP-Reservierung für den Drucker.
 - **Immer nur ein Scan gleichzeitig.** Der eSCL-Auftrag wird danach sauber gelöscht; ein laufender Scan lässt sich abbrechen (Karte, Dienst `cancel_scan`, Schaltfläche, Taster). Timeouts: Einzug 900 s, Flachbett 180 s; die Seitenzahl wird live aktualisiert.
 - **Aufwärmlogik für den Einzug:** Meldet der Drucker `ScannerAdfEmpty` (auch fälschlich nach dem Standby), wird **einmal** ein winziger Flachbett-Scan (100 dpi, 10×10 mm) gemacht, um den Sensor zu aktualisieren. Steht er danach immer noch auf leer, ist wirklich kein Papier eingelegt: Der Scan wird nicht gestartet und meldet „Einzug leer – bitte Papier einlegen“. Meldet der Scanner gar keinen Einzugsstatus, wird einfach gescannt.
+- **Drucker im Standby oder ausgeschaltet:** Das ist kein Fehler. Der Status wird alle 30 Sekunden abgefragt; antwortet der Drucker zweimal hintereinander nicht, gilt er als nicht erreichbar (Einzugs-Sensor „nicht verfügbar“, Hinweis auf der Karte, Ereignis `ha_airscan_printer_offline`). Im Protokoll steht dazu nur eine Zeile auf Info-Ebene („Scanner not reachable …“, später „Scanner reachable again“), keine Fehler- oder Warnmeldung. Ein Scan wird trotzdem versucht und weckt den Drucker.
 - **Dateiname** `scan-JJJJMMTT-HHMMSS.pdf`.
 
 ## Papierformat und Papierlage
