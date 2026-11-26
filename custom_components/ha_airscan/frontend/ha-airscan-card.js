@@ -7,7 +7,8 @@
  * Buttons call the ha_airscan services; everything shown comes from the sensors of the
  * integration. No external libraries.
  */
-const CARD_VERSION = "0.8.0";
+const CARD_VERSION = "0.9.0";
+const WIDE_PX = 600;   // card width from which "auto" shows two columns
 
 const T = {
   de: {
@@ -66,9 +67,12 @@ const STATUS_KEYS = { idle: "ready", batch: "batch", running: "running", done: "
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 const STYLE = `
-:host{display:block}
-ha-card{color:var(--primary-text-color)}
+:host{display:block;min-width:0;box-sizing:border-box}
+ha-card{color:var(--primary-text-color);box-sizing:border-box;width:100%}
 .body{padding:16px;display:flex;flex-direction:column;gap:12px}
+.col{display:flex;flex-direction:column;gap:12px;min-width:0}
+/* two columns: left the status, right the controls; the card needs about 560 px for it */
+.body.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
 .head{display:flex;align-items:center;gap:12px}
 .logo{width:44px;height:44px;flex:none;border-radius:12px;background:var(--secondary-background-color);display:grid;place-items:center}
 .logo svg{width:30px;height:30px}
@@ -158,13 +162,29 @@ class HaAirscanCard extends HTMLElement {
     this._sig = "";
   }
 
-  getCardSize() { return 5; }
+  /** "single", "two" or "auto" (two columns as soon as the card is wide enough). */
+  get _two() {
+    const l = this._config?.layout;
+    return l === "two" || (l !== "single" && !!this._wide);
+  }
+
+  getCardSize() { return this._two ? 3 : 5; }
+
+  // Sections view: full width of the section, the height follows the content
+  getGridOptions() { return { columns: 12, min_columns: this._config?.layout === "two" ? 8 : 6, rows: "auto" }; }
 
   connectedCallback() {
     this._timer = setInterval(() => { this._tick++; this._update(); }, 30000);
+    if (typeof ResizeObserver !== "undefined") {
+      this._ro = new ResizeObserver(([entry]) => {
+        const wide = entry.contentRect.width >= WIDE_PX;
+        if (wide !== this._wide) { this._wide = wide; this._sig = ""; this._update(); }
+      });
+      this._ro.observe(this);
+    }
   }
 
-  disconnectedCallback() { clearInterval(this._timer); }
+  disconnectedCallback() { clearInterval(this._timer); if (this._ro) { this._ro.disconnect(); this._ro = null; } }
 
   set hass(hass) { this._hass = hass; this._update(); }
 
@@ -253,7 +273,7 @@ class HaAirscanCard extends HTMLElement {
     const last = get("last_scan");
     const queue = get("queue");
     const a = st ? st.attributes : {};
-    const sig = JSON.stringify([st && st.state, a, feeder && feeder.state, last && last.state, queue && [queue.state, queue.attributes.next_retry, queue.attributes.rejected], this._ui, this._toast, this._tick, this._hass.language]);
+    const sig = JSON.stringify([st && st.state, a, feeder && feeder.state, last && last.state, queue && [queue.state, queue.attributes.next_retry, queue.attributes.rejected], this._ui, this._two, this._toast, this._tick, this._hass.language]);
     if (sig === this._sig) return;
     this._sig = sig;
     this._render(st, a, sib, feeder, last, queue);
@@ -387,11 +407,16 @@ class HaAirscanCard extends HTMLElement {
     else if (locked) actions = `<div class="actions"><button class="secondary" data-act="add">${esc(t.add_page)}</button><button class="primary" data-act="send">${esc(t.send)}</button><button class="secondary danger" data-act="discard">${esc(t.discard)}</button></div>`;
     else actions = `<div class="actions"><button class="primary" data-act="scan" ${status === "unavailable" ? "disabled" : ""}>${esc(status === "error" ? t.retry : t.scan)}</button></div>`;
 
-    root.innerHTML = `<style>${STYLE}</style><ha-card><div class="body">
-      <div class="head"><div class="logo">${LOGO}</div><div class="name" title="${esc(name)}">${esc(name)}</div>${feederChip}</div>
-      <div class="beam ${beam}"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-      ${statusBox}${seg}${opts}${panel}${actions}
-      ${this._toast ? `<div class="toast">${esc(this._toast)}</div>` : ""}
+    root.innerHTML = `<style>${STYLE}</style><ha-card><div class="body ${this._two ? "two" : ""}">
+      <div class="col">
+        <div class="head"><div class="logo">${LOGO}</div><div class="name" title="${esc(name)}">${esc(name)}</div>${feederChip}</div>
+        <div class="beam ${beam}"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        ${statusBox}
+      </div>
+      <div class="col">
+        ${seg}${opts}${panel}${actions}
+        ${this._toast ? `<div class="toast">${esc(this._toast)}</div>` : ""}
+      </div>
     </div></ha-card>`;
   }
 }

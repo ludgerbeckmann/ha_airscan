@@ -22,6 +22,8 @@ const assert = require("assert");
       queue: { count: 2, next: 4 * 60000, items: [{ title: "Scan 2026-10-29 21:10", last_error: "ClientConnectorError: Cannot connect to host paperless:8000" }] } });
     mount({ cap: "7 · Drucker offline", status: "idle", feeder: "unavailable", attrs: { printer_online: false, printer_state: null } });
     mount({ cap: "8 · Dunkel (Stapel)", status: "batch", dark: true, attrs: { batch_pages: 3, batch_expires_at: iso(24 * 60000) } });
+    mount({ cap: "9 · Zwei Spalten (layout: two)", status: "done", ui: { source: "adf", duplex: true }, config: { layout: "two" }, attrs: { pages: 6, destination: "paperless", document_id: 123 }, last: iso(-2 * 60000) }, window.boxed(900));
+    mount({ cap: "10 · Zwei Spalten, läuft, dunkel", status: "running", dark: true, ui: { source: "adf" }, config: { layout: "two" }, attrs: { pages: 3, cancellable: true, detail: "Seite 3 gescannt" } }, window.boxed(900));
   });
   await page.screenshot({ path: process.argv[2] || "card.png", fullPage: true });
 
@@ -60,6 +62,20 @@ const assert = require("assert");
     click(cx, '[data-act="cancel"]'); out.cancelCall = cx._hass.calls.slice();
     const cn = mount({ status: "idle", attrs: { notice: "cancelled", notice_at: iso(-30000) } }, document.body);
     out.cancelNotice = root(cn).querySelector(".headline, .status")?.textContent || root(cn).textContent;
+
+    // layout: two columns when asked for or (auto) when wide; never when "single"
+    const wide = window.boxed(900), narrow = window.boxed(478), forced = window.boxed(478), single = window.boxed(900);
+    const lw = mount({ status: "idle" }, wide), ln = mount({ status: "idle" }, narrow);
+    const lf = mount({ status: "idle", config: { layout: "two" } }, forced), ls = mount({ status: "idle", config: { layout: "single" } }, single);
+    await new Promise((r) => setTimeout(r, 120));           // ResizeObserver
+    const two = (c) => !!root(c).querySelector(".body.two");
+    out.layouts = { wideAuto: two(lw), narrowAuto: two(ln), forcedTwo: two(lf), forcedSingle: two(ls) };
+    const cols = [...root(lw).querySelectorAll(".body > .col")].map((e) => e.getBoundingClientRect());
+    out.sideBySide = cols.length === 2 && cols[0].right <= cols[1].left + 1 && Math.abs(cols[0].top - cols[1].top) < 2;
+    out.layoutHeights = [Math.round(lw.getBoundingClientRect().height), Math.round(ln.getBoundingClientRect().height)];
+    out.noOverflow = [lw, ln, lf, ls].every((c) => root(c).querySelector(".body").scrollWidth <= root(c).querySelector(".body").clientWidth + 1);
+    out.gridOptions = lw.getGridOptions();
+    out.sizes = [lw.getCardSize(), ln.getCardSize()];
 
     const r = mount({ status: "running" }, document.body);
     out.runningDisabled = root(r).querySelector(".primary").disabled;
@@ -182,6 +198,12 @@ const assert = require("assert");
   assert.deepStrictEqual(result.adfOverrides[2], ["ha_airscan", "scan", { source: "adf", duplex: true, resolution: 600, skip_blank: false }]);
   assert.ok(result.pills.includes("600 dpi"), JSON.stringify(result.pills));
   assert.deepStrictEqual(result.batch.map((x) => x[1]), ["batch_add", "batch_send", "batch_discard"]);
+  assert.deepStrictEqual(result.layouts, { wideAuto: true, narrowAuto: false, forcedTwo: true, forcedSingle: false });
+  assert.ok(result.sideBySide, "the two columns must stand side by side");
+  assert.ok(result.layoutHeights[0] < result.layoutHeights[1] * 0.7, "two columns must be clearly lower: " + JSON.stringify(result.layoutHeights));
+  assert.ok(result.noOverflow, "nothing may overflow the card");
+  assert.deepStrictEqual(result.gridOptions, { columns: 12, min_columns: 6, rows: "auto" });
+  assert.deepStrictEqual(result.sizes, [3, 5]);
   assert.strictEqual(result.cancelLabel, "Abbrechen");
   assert.deepStrictEqual(result.cancelCall, [["ha_airscan", "cancel_scan", {}]]);
   assert.ok(/Scan abgebrochen/.test(result.cancelNotice), result.cancelNotice);
@@ -203,7 +225,7 @@ const assert = require("assert");
   assert.strictEqual(result.retryLabel, "Erneut versuchen");
   for (const width of [360, 320]) {
     const hs = Object.entries(result.heights).filter(([k]) => k.endsWith("@" + width)).map(([, v]) => v);
-    assert.ok(Math.max(...hs) - Math.min(...hs) <= 1, `card height changes between states at ${width} px: ` + JSON.stringify(result.heights));
+    assert.ok(Math.max(...hs) - Math.min(...hs) <= 1, `card height changes between states at ${width} px: ` + JSON.stringify(result.layoutHeights));
   }
   for (const [k, [text, whole]] of Object.entries(result.headline)) assert.ok(whole, `headline of "${k}" is cut off: ${text}`);
   assert.deepStrictEqual(result.batchButtons, ["+ Seite", "Senden", "Verwerfen"]);
