@@ -10,15 +10,16 @@ from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
 
 from . import AirscanConfigEntry
-from .const import CONF_PAPERLESS_TOKEN, CONF_PAPERLESS_URL
+from .const import CONF_PAPERLESS_TOKEN, CONF_PAPERLESS_URL, CONF_PAPERLESS_WEBHOOK_ID
 
-TO_REDACT = {CONF_HOST, CONF_PAPERLESS_TOKEN, CONF_PAPERLESS_URL, "uuid"}
+# the webhook ID is the secret of the webhook address
+TO_REDACT = {CONF_HOST, CONF_PAPERLESS_TOKEN, CONF_PAPERLESS_URL, CONF_PAPERLESS_WEBHOOK_ID, "uuid"}
 
 
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: AirscanConfigEntry
 ) -> dict[str, Any]:
-    """Return redacted diagnostics (no token, URL, host or scanner UUID)."""
+    """Return redacted diagnostics (no token, URL, host, webhook ID or scanner UUID)."""
     data = entry.runtime_data
     status = data.coordinator.data
     return {

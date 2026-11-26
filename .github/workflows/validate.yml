@@ -11,11 +11,17 @@ on:
     - cron: "0 4 * * 1"
   workflow_dispatch:
 
+# This workflow only checks: read access is all it needs.
+permissions:
+  contents: read
+
 jobs:
   hassfest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: home-assistant/actions/hassfest@master
 
   hacs:
@@ -24,6 +30,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: hacs/action@main
         with:
           category: integration
@@ -32,6 +40,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
