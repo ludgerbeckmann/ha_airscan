@@ -146,6 +146,8 @@ class HaAirscanCard extends HTMLElement {
     this.shadowRoot.addEventListener("change", (e) => this._onChange(e));
   }
 
+  static getConfigElement() { return document.createElement("ha-airscan-card-editor"); }
+
   static getStubConfig(hass) {
     const reg = hass.entities || {};
     const id = Object.keys(reg).find((k) => reg[k].platform === "ha_airscan" && reg[k].translation_key === "status")
@@ -421,7 +423,54 @@ class HaAirscanCard extends HTMLElement {
   }
 }
 
+const EDITOR_T = {
+  de: {
+    entity: "Status-Sensor des Scanners", entity_help: "Der Sensor „… Status“ (nicht „Seiten“, „Letzter Scan“ o. Ä.).",
+    name: "Titel (optional)", name_help: "Ersetzt den Gerätenamen in der Kopfzeile der Karte.",
+    layout: "Anordnung", auto: "Automatisch (zwei Spalten, wenn die Karte breit genug ist)", single: "Immer einspaltig", two: "Immer zwei Spalten",
+  },
+  en: {
+    entity: "Status sensor of the scanner", entity_help: "The \"… Status\" sensor (not \"Pages\", \"Last scan\" etc.).",
+    name: "Title (optional)", name_help: "Replaces the device name in the card header.",
+    layout: "Layout", auto: "Automatic (two columns when the card is wide enough)", single: "Always one column", two: "Always two columns",
+  },
+};
+
+/** Visual editor: entity, optional title and layout (everything else stays in YAML and is kept as it is). */
+class HaAirscanCardEditor extends HTMLElement {
+  setConfig(config) { this._config = config || {}; this._render(); }
+
+  set hass(hass) { this._hass = hass; this._render(); }
+
+  _render() {
+    if (!this._config || !this._hass) return;
+    const t = EDITOR_T[(this._hass.language || "en").slice(0, 2)] || EDITOR_T.en;
+    if (!this._form) {
+      this._form = document.createElement("ha-form");
+      this._form.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        const config = { ...this._config, ...ev.detail.value };
+        if (!String(config.name || "").trim()) delete config.name;
+        if (!config.layout || config.layout === "auto") delete config.layout;
+        this._config = config;
+        this.dispatchEvent(new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }));
+      });
+      this.appendChild(this._form);
+    }
+    this._form.hass = this._hass;
+    this._form.data = { layout: "auto", ...this._config };
+    this._form.schema = [
+      { name: "entity", required: true, selector: { entity: { filter: [{ integration: "ha_airscan", domain: "sensor" }] } } },
+      { name: "name", selector: { text: {} } },
+      { name: "layout", selector: { select: { mode: "dropdown", options: ["auto", "single", "two"].map((v) => ({ value: v, label: t[v] })) } } },
+    ];
+    this._form.computeLabel = (s) => t[s.name] || s.name;
+    this._form.computeHelper = (s) => t[`${s.name}_help`] || "";
+  }
+}
+
 if (!customElements.get("ha-airscan-card")) customElements.define("ha-airscan-card", HaAirscanCard);
+if (!customElements.get("ha-airscan-card-editor")) customElements.define("ha-airscan-card-editor", HaAirscanCardEditor);
 window.customCards = window.customCards || [];
 if (!window.customCards.some((c) => c.type === "ha-airscan-card")) {
   window.customCards.push({ type: "ha-airscan-card", name: "Scan to Paperless", description: "Scan via eSCL (flatbed, feeder, duplex, batch) and send to Paperless-ngx.", preview: false });

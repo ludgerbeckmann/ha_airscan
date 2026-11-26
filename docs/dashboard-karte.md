@@ -11,7 +11,7 @@ type: custom:ha-airscan-card
 entity: sensor.epson_et_3950_series_status   # der Status-Sensor deines Scanners
 ```
 
-Optional: `name` (Titel), `config_entry` (bei mehreren Scannern) und `layout`:
+Statt YAML gibt es einen **visuellen Editor** mit Status-Sensor, optionalem Titel und Anordnung. Optional in der YAML: `name` (Titel, ersetzt den Gerätenamen in der Kopfzeile), `config_entry` (bei mehreren Scannern) und `layout`:
 
 ```yaml
 type: custom:ha-airscan-card

@@ -77,6 +77,21 @@ const assert = require("assert");
     out.gridOptions = lw.getGridOptions();
     out.sizes = [lw.getCardSize(), ln.getCardSize()];
 
+    // visual editor: entity, title and layout; everything else in the config stays untouched
+    const ed = customElements.get("ha-airscan-card").getConfigElement();
+    out.editorTag = ed.tagName.toLowerCase();
+    ed.setConfig({ type: "custom:ha-airscan-card", entity: "sensor.epson_status", config_entry: "abc" }); ed.hass = { language: "de" };
+    const form = ed.querySelector("ha-form");
+    out.editorFields = form.schema.map((s) => s.name);
+    out.editorLabels = form.schema.map((s) => form.computeLabel(s));
+    out.editorLayoutOptions = form.schema[2].selector.select.options.map((o) => o.value);
+    out.editorData = form.data;
+    const emitted = [];
+    ed.addEventListener("config-changed", (e) => emitted.push(e.detail.config));
+    form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form.data, name: "Scanner Flur", layout: "two" } } }));
+    form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form.data, name: "  ", layout: "auto" } } }));
+    out.editorEmitted = emitted;
+
     const r = mount({ status: "running" }, document.body);
     out.runningDisabled = root(r).querySelector(".primary").disabled;
 
@@ -204,6 +219,15 @@ const assert = require("assert");
   assert.ok(result.noOverflow, "nothing may overflow the card");
   assert.deepStrictEqual(result.gridOptions, { columns: 12, min_columns: 6, rows: "auto" });
   assert.deepStrictEqual(result.sizes, [3, 5]);
+  assert.strictEqual(result.editorTag, "ha-airscan-card-editor");
+  assert.deepStrictEqual(result.editorFields, ["entity", "name", "layout"]);
+  assert.deepStrictEqual(result.editorLabels, ["Status-Sensor des Scanners", "Titel (optional)", "Anordnung"]);
+  assert.deepStrictEqual(result.editorLayoutOptions, ["auto", "single", "two"]);
+  assert.strictEqual(result.editorData.layout, "auto");
+  assert.deepStrictEqual(result.editorEmitted, [
+    { type: "custom:ha-airscan-card", entity: "sensor.epson_status", config_entry: "abc", name: "Scanner Flur", layout: "two" },
+    { type: "custom:ha-airscan-card", entity: "sensor.epson_status", config_entry: "abc" },   // empty title and "auto" are not written
+  ]);
   assert.strictEqual(result.cancelLabel, "Abbrechen");
   assert.deepStrictEqual(result.cancelCall, [["ha_airscan", "cancel_scan", {}]]);
   assert.ok(/Scan abgebrochen/.test(result.cancelNotice), result.cancelNotice);

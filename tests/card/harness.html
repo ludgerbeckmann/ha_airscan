@@ -45,6 +45,7 @@ function mount(o, parent = document.getElementById("grid")) {
   wrap.appendChild(card); parent.appendChild(wrap);
   return card;
 }
+customElements.define("ha-form", class extends HTMLElement {});   // stands in for the Home Assistant form element
 customElements.define("ha-card", class extends HTMLElement { connectedCallback() { Object.assign(this.style, { display: "block", background: "var(--card-background-color)", borderRadius: "12px", boxShadow: "0 2px 6px rgba(0,0,0,.15)" }); } });
 window.mount = mount; window.iso = iso;
 </script>
