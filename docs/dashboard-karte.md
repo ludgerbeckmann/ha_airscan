@@ -11,7 +11,19 @@ type: custom:ha-airscan-card
 entity: sensor.epson_et_3950_series_status   # der Status-Sensor deines Scanners
 ```
 
-Optional: `name` (Titel) und `config_entry` (bei mehreren Scannern).
+Optional: `name` (Titel), `config_entry` (bei mehreren Scannern) und `layout`:
+
+```yaml
+type: custom:ha-airscan-card
+entity: sensor.epson_et_3950_series_status
+layout: two        # auto (Standard) | single | two
+```
+
+- `auto`: einspaltig, ab einer Kartenbreite von etwa 600 Pixeln automatisch **zwei Spalten** nebeneinander (links Gerät und Status, rechts Scanart, Optionen und Scannen). Die Karte ist dann nur etwa halb so hoch.
+- `single`: immer einspaltig.
+- `two`: immer zwei Spalten (sinnvoll ab etwa 560 Pixeln Breite).
+
+In der Bereiche-Ansicht (Sections) belegt die Karte die volle Breite des Bereichs und lässt sich in der Größe ändern; die Höhe richtet sich nach dem Inhalt. Für zwei Spalten die Karte dort auf mindestens die halbe Seitenbreite ziehen.
 
 ## Aufbau
 
