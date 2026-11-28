@@ -22,6 +22,7 @@ const assert = require("assert");
       queue: { count: 2, next: 4 * 60000, items: [{ title: "Scan 2026-10-29 21:10", last_error: "ClientConnectorError: Cannot connect to host paperless:8000" }] } });
     mount({ cap: "7 · Drucker offline", status: "idle", feeder: "unavailable", attrs: { printer_online: false, printer_state: null } });
     mount({ cap: "8 · Dunkel (Stapel)", status: "batch", dark: true, attrs: { batch_pages: 3, batch_expires_at: iso(24 * 60000) } });
+    mount({ cap: "9a · Querformat bei 560 px (kompakt)", status: "idle", feeder: "empty", ui: { source: "adf" }, config: { layout: "horizontal" } }, window.boxed(560));
     mount({ cap: "9 · Zwei Spalten (layout: two)", status: "done", ui: { source: "adf", duplex: true }, config: { layout: "two" }, attrs: { pages: 6, destination: "paperless", document_id: 123 }, last: iso(-2 * 60000) }, window.boxed(900));
     mount({ cap: "10 · Zwei Spalten, läuft, dunkel", status: "running", dark: true, ui: { source: "adf" }, config: { layout: "two" }, attrs: { pages: 3, cancellable: true, detail: "Seite 3 gescannt" } }, window.boxed(900));
   });
@@ -64,16 +65,19 @@ const assert = require("assert");
     out.cancelNotice = root(cn).querySelector(".headline, .status")?.textContent || root(cn).textContent;
 
     // layout: two columns when asked for or (auto) when wide; never when "single"
-    const wide = window.boxed(900), narrow = window.boxed(478), forced = window.boxed(478), single = window.boxed(900);
+    const wide = window.boxed(900), narrow = window.boxed(478), phone = window.boxed(390), mid = window.boxed(560), single = window.boxed(900), alias = window.boxed(560);
     const lw = mount({ status: "idle" }, wide), ln = mount({ status: "idle" }, narrow);
-    const lf = mount({ status: "idle", config: { layout: "two" } }, forced), ls = mount({ status: "idle", config: { layout: "single" } }, single);
+    const lf = mount({ status: "idle", config: { layout: "horizontal" } }, mid), ls = mount({ status: "idle", config: { layout: "vertical" } }, single);
+    const lp = mount({ status: "idle", config: { layout: "horizontal" } }, phone), la = mount({ status: "idle", config: { layout: "two" } }, alias);
+    const lm = mount({ status: "idle" }, window.boxed(560));
     await new Promise((r) => setTimeout(r, 120));           // ResizeObserver
     const two = (c) => !!root(c).querySelector(".body.two");
-    out.layouts = { wideAuto: two(lw), narrowAuto: two(ln), forcedTwo: two(lf), forcedSingle: two(ls) };
+    const tight = (c) => !!root(c).querySelector(".body.tight");
+    out.layouts = { wideAuto: two(lw), narrowAuto: two(ln), midAuto: two(lm), horizontalMid: two(lf), horizontalPhone: two(lp), vertical: two(ls), oldNameTwo: two(la), tightMid: tight(lf), tightWide: tight(lw) };
     const cols = [...root(lw).querySelectorAll(".body > .col")].map((e) => e.getBoundingClientRect());
     out.sideBySide = cols.length === 2 && cols[0].right <= cols[1].left + 1 && Math.abs(cols[0].top - cols[1].top) < 2;
     out.layoutHeights = [Math.round(lw.getBoundingClientRect().height), Math.round(ln.getBoundingClientRect().height)];
-    out.noOverflow = [lw, ln, lf, ls].every((c) => root(c).querySelector(".body").scrollWidth <= root(c).querySelector(".body").clientWidth + 1);
+    out.noOverflow = [lw, ln, lf, ls, lp].every((c) => root(c).querySelector(".body").scrollWidth <= root(c).querySelector(".body").clientWidth + 1);
     out.gridOptions = lw.getGridOptions();
     out.sizes = [lw.getCardSize(), ln.getCardSize()];
 
@@ -88,7 +92,7 @@ const assert = require("assert");
     out.editorData = form.data;
     const emitted = [];
     ed.addEventListener("config-changed", (e) => emitted.push(e.detail.config));
-    form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form.data, name: "Scanner Flur", layout: "two" } } }));
+    form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form.data, name: "Scanner Flur", layout: "horizontal" } } }));
     form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form.data, name: "  ", layout: "auto" } } }));
     out.editorEmitted = emitted;
 
@@ -213,7 +217,8 @@ const assert = require("assert");
   assert.deepStrictEqual(result.adfOverrides[2], ["ha_airscan", "scan", { source: "adf", duplex: true, resolution: 600, skip_blank: false }]);
   assert.ok(result.pills.includes("600 dpi"), JSON.stringify(result.pills));
   assert.deepStrictEqual(result.batch.map((x) => x[1]), ["batch_add", "batch_send", "batch_discard"]);
-  assert.deepStrictEqual(result.layouts, { wideAuto: true, narrowAuto: false, forcedTwo: true, forcedSingle: false });
+  assert.deepStrictEqual(result.layouts, { wideAuto: true, narrowAuto: false, midAuto: false, horizontalMid: true, horizontalPhone: false,
+    vertical: false, oldNameTwo: true, tightMid: true, tightWide: false });
   assert.ok(result.sideBySide, "the two columns must stand side by side");
   assert.ok(result.layoutHeights[0] < result.layoutHeights[1] * 0.7, "two columns must be clearly lower: " + JSON.stringify(result.layoutHeights));
   assert.ok(result.noOverflow, "nothing may overflow the card");
@@ -222,10 +227,10 @@ const assert = require("assert");
   assert.strictEqual(result.editorTag, "ha-airscan-card-editor");
   assert.deepStrictEqual(result.editorFields, ["entity", "name", "layout"]);
   assert.deepStrictEqual(result.editorLabels, ["Status-Sensor des Scanners", "Titel (optional)", "Anordnung"]);
-  assert.deepStrictEqual(result.editorLayoutOptions, ["auto", "single", "two"]);
+  assert.deepStrictEqual(result.editorLayoutOptions, ["auto", "vertical", "horizontal"]);
   assert.strictEqual(result.editorData.layout, "auto");
   assert.deepStrictEqual(result.editorEmitted, [
-    { type: "custom:ha-airscan-card", entity: "sensor.epson_status", config_entry: "abc", name: "Scanner Flur", layout: "two" },
+    { type: "custom:ha-airscan-card", entity: "sensor.epson_status", config_entry: "abc", name: "Scanner Flur", layout: "horizontal" },
     { type: "custom:ha-airscan-card", entity: "sensor.epson_status", config_entry: "abc" },   // empty title and "auto" are not written
   ]);
   assert.strictEqual(result.cancelLabel, "Abbrechen");
