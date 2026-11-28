@@ -8,7 +8,9 @@
  * integration. No external libraries.
  */
 const CARD_VERSION = "0.9.0";
-const WIDE_PX = 600;   // card width from which "auto" shows two columns
+const WIDE_PX = 600;     // card width from which "auto" shows two columns
+const LANDSCAPE_PX = 520;   // narrowest card that still shows two columns when "horizontal" is chosen
+const TIGHT_PX = 640;    // below this the two columns get the compact variant
 
 const T = {
   de: {
@@ -73,6 +75,11 @@ ha-card{color:var(--primary-text-color);box-sizing:border-box;width:100%}
 .col{display:flex;flex-direction:column;gap:12px;min-width:0}
 /* two columns: left the status, right the controls; the card needs about 560 px for it */
 .body.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+/* between about 520 and 640 px: name above the feeder chip, option pills may wrap instead of being cut off */
+.body.tight .head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 10px;align-items:center}
+.body.tight .head .chip.feeder{grid-column:1/-1;justify-self:start}
+.body.tight .opts{flex-wrap:wrap}
+.body.tight .pill{overflow:visible}
 .head{display:flex;align-items:center;gap:12px}
 .logo{width:44px;height:44px;flex:none;border-radius:12px;background:var(--secondary-background-color);display:grid;place-items:center}
 .logo svg{width:30px;height:30px}
@@ -164,23 +171,33 @@ class HaAirscanCard extends HTMLElement {
     this._sig = "";
   }
 
-  /** "single", "two" or "auto" (two columns as soon as the card is wide enough). */
-  get _two() {
+  /** "vertical", "horizontal" or "auto" (the old names "single" and "two" still work). */
+  get _layout() {
     const l = this._config?.layout;
-    return l === "two" || (l !== "single" && !!this._wide);
+    return l === "two" ? "horizontal" : l === "single" ? "vertical" : (l === "vertical" || l === "horizontal" ? l : "auto");
   }
+
+  /** Two columns? Horizontal needs about 520 px, auto 600 px; on a narrow screen (phone) everything stands below each other. */
+  get _two() {
+    const l = this._layout;
+    if (l === "vertical") return false;
+    return (this._width || 0) >= (l === "horizontal" ? LANDSCAPE_PX : WIDE_PX);
+  }
+
+  get _tight() { return this._two && (this._width || 0) < TIGHT_PX; }
 
   getCardSize() { return this._two ? 3 : 5; }
 
   // Sections view: full width of the section, the height follows the content
-  getGridOptions() { return { columns: 12, min_columns: this._config?.layout === "two" ? 8 : 6, rows: "auto" }; }
+  getGridOptions() { return { columns: 12, min_columns: this._layout === "horizontal" ? 8 : 6, rows: "auto" }; }
 
   connectedCallback() {
     this._timer = setInterval(() => { this._tick++; this._update(); }, 30000);
     if (typeof ResizeObserver !== "undefined") {
       this._ro = new ResizeObserver(([entry]) => {
-        const wide = entry.contentRect.width >= WIDE_PX;
-        if (wide !== this._wide) { this._wide = wide; this._sig = ""; this._update(); }
+        const before = [this._two, this._tight];
+        this._width = entry.contentRect.width;
+        if (before[0] !== this._two || before[1] !== this._tight) { this._sig = ""; this._update(); }
       });
       this._ro.observe(this);
     }
@@ -275,7 +292,7 @@ class HaAirscanCard extends HTMLElement {
     const last = get("last_scan");
     const queue = get("queue");
     const a = st ? st.attributes : {};
-    const sig = JSON.stringify([st && st.state, a, feeder && feeder.state, last && last.state, queue && [queue.state, queue.attributes.next_retry, queue.attributes.rejected], this._ui, this._two, this._toast, this._tick, this._hass.language]);
+    const sig = JSON.stringify([st && st.state, a, feeder && feeder.state, last && last.state, queue && [queue.state, queue.attributes.next_retry, queue.attributes.rejected], this._ui, this._two, this._tight, this._toast, this._tick, this._hass.language]);
     if (sig === this._sig) return;
     this._sig = sig;
     this._render(st, a, sib, feeder, last, queue);
@@ -409,7 +426,7 @@ class HaAirscanCard extends HTMLElement {
     else if (locked) actions = `<div class="actions"><button class="secondary" data-act="add">${esc(t.add_page)}</button><button class="primary" data-act="send">${esc(t.send)}</button><button class="secondary danger" data-act="discard">${esc(t.discard)}</button></div>`;
     else actions = `<div class="actions"><button class="primary" data-act="scan" ${status === "unavailable" ? "disabled" : ""}>${esc(status === "error" ? t.retry : t.scan)}</button></div>`;
 
-    root.innerHTML = `<style>${STYLE}</style><ha-card><div class="body ${this._two ? "two" : ""}">
+    root.innerHTML = `<style>${STYLE}</style><ha-card><div class="body ${this._two ? "two" : ""} ${this._tight ? "tight" : ""}">
       <div class="col">
         <div class="head"><div class="logo">${LOGO}</div><div class="name" title="${esc(name)}">${esc(name)}</div>${feederChip}</div>
         <div class="beam ${beam}"><i></i><i></i><i></i><i></i><i></i><i></i></div>
@@ -427,12 +444,14 @@ const EDITOR_T = {
   de: {
     entity: "Status-Sensor des Scanners", entity_help: "Der Sensor „… Status“ (nicht „Seiten“, „Letzter Scan“ o. Ä.).",
     name: "Titel (optional)", name_help: "Ersetzt den Gerätenamen in der Kopfzeile der Karte.",
-    layout: "Anordnung", auto: "Automatisch (zwei Spalten, wenn die Karte breit genug ist)", single: "Immer einspaltig", two: "Immer zwei Spalten",
+    layout: "Anordnung", layout_help: "Querformat braucht etwa 520 px Breite (in der Bereiche-Ansicht den Bereich auf 2 Spalten verbreitern); auf schmalen Bildschirmen steht alles untereinander.",
+    auto: "Automatisch (quer, wenn die Karte breit genug ist)", vertical: "Hochformat (alles untereinander)", horizontal: "Querformat (nebeneinander, flacher)",
   },
   en: {
     entity: "Status sensor of the scanner", entity_help: "The \"… Status\" sensor (not \"Pages\", \"Last scan\" etc.).",
     name: "Title (optional)", name_help: "Replaces the device name in the card header.",
-    layout: "Layout", auto: "Automatic (two columns when the card is wide enough)", single: "Always one column", two: "Always two columns",
+    layout: "Layout", layout_help: "Landscape needs about 520 px of width (in the sections view make the section 2 columns wide); on narrow screens everything stands below each other.",
+    auto: "Automatic (landscape when the card is wide enough)", vertical: "Portrait (everything below each other)", horizontal: "Landscape (side by side, lower)",
   },
 };
 
@@ -452,17 +471,19 @@ class HaAirscanCardEditor extends HTMLElement {
         const config = { ...this._config, ...ev.detail.value };
         if (!String(config.name || "").trim()) delete config.name;
         if (!config.layout || config.layout === "auto") delete config.layout;
+        else if (config.layout === "single") config.layout = "vertical";
+        else if (config.layout === "two") config.layout = "horizontal";
         this._config = config;
         this.dispatchEvent(new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }));
       });
       this.appendChild(this._form);
     }
     this._form.hass = this._hass;
-    this._form.data = { layout: "auto", ...this._config };
+    this._form.data = { ...this._config, layout: { single: "vertical", two: "horizontal" }[this._config.layout] || this._config.layout || "auto" };
     this._form.schema = [
       { name: "entity", required: true, selector: { entity: { filter: [{ integration: "ha_airscan", domain: "sensor" }] } } },
       { name: "name", selector: { text: {} } },
-      { name: "layout", selector: { select: { mode: "dropdown", options: ["auto", "single", "two"].map((v) => ({ value: v, label: t[v] })) } } },
+      { name: "layout", selector: { select: { mode: "dropdown", options: ["auto", "vertical", "horizontal"].map((v) => ({ value: v, label: t[v] })) } } },
     ];
     this._form.computeLabel = (s) => t[s.name] || s.name;
     this._form.computeHelper = (s) => t[`${s.name}_help`] || "";

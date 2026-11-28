@@ -16,14 +16,16 @@ Statt YAML gibt es einen **visuellen Editor** mit Status-Sensor, optionalem Tite
 ```yaml
 type: custom:ha-airscan-card
 entity: sensor.epson_et_3950_series_status
-layout: two        # auto (Standard) | single | two
+layout: horizontal   # auto (Standard) | vertical | horizontal
 ```
 
-- `auto`: einspaltig, ab einer Kartenbreite von etwa 600 Pixeln automatisch **zwei Spalten** nebeneinander (links Gerät und Status, rechts Scanart, Optionen und Scannen). Die Karte ist dann nur etwa halb so hoch.
-- `single`: immer einspaltig.
-- `two`: immer zwei Spalten (sinnvoll ab etwa 560 Pixeln Breite).
+- `vertical` (Hochformat): immer alles untereinander, wie bisher.
+- `horizontal` (Querformat): zwei Spalten nebeneinander (links Gerät und Status, rechts Scanart, Optionen und Scannen). Die Karte ist dann deutlich flacher, etwa 40 bis 50 % niedriger. Das braucht **mindestens etwa 520 px Breite**. Ist die Karte schmaler, zum Beispiel auf dem Handy oder in einem schmalen Bereich, steht automatisch alles untereinander. Zwischen 520 und 640 px wird kompakter dargestellt (Feeder-Chip unter dem Namen, Optionen dürfen umbrechen).
+- `auto`: Hochformat, ab etwa 600 px Breite automatisch Querformat.
 
-In der Bereiche-Ansicht (Sections) belegt die Karte die volle Breite des Bereichs und lässt sich in der Größe ändern; die Höhe richtet sich nach dem Inhalt. Für zwei Spalten die Karte dort auf mindestens die halbe Seitenbreite ziehen.
+(Die älteren Namen `single` und `two` funktionieren weiter.)
+
+In der **Bereiche-Ansicht (Sections)** kann die Karte nicht breiter werden als ihr Bereich. Ein Bereich ist oft nur ein Drittel der Seite breit (auf einem Tablet etwa 400 px). Für die Queransicht den Bereich mit der Karte verbreitern: Bereich bearbeiten → Spaltenbreite 2 (oder mehr). Die Höhe richtet sich nach dem Inhalt.
 
 ## Aufbau
 
